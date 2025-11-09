@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 搜索历史表
+model SearchHistory {
+  id          Int      @id @default(autoincrement())
+  keyword     String
+  searchTime  DateTime @default(now()) @map("search_time")
+  articleCount Int?    @map("article_count")
+  avgRead     Int?     @map("avg_read")
+  avgLike     Int?     @map("avg_like")
+  originalRate Float?  @map("original_rate")
+  status      String   @default("completed") // 'completed', 'failed', 'processing'
+  errorMessage String? @map("error_message")
+
+  // 关联分析结果
+  analysisResult AnalysisResult?
+
+  @@map("search_history")
+}
+
+// 分析结果表
+model AnalysisResult {
+  id                     Int      @id @default(autoincrement())
+  searchHistoryId        Int      @unique @map("search_history_id")
+  insights               String   // JSON格式的洞察列表（原字段，保持兼容）
+  wordCloud              String   @map("word_cloud") // JSON格式的词云数据
+  topLikedArticles       String   @map("top_liked_articles") // JSON格式的TOP文章
+  topInteractionArticles String   @map("top_interaction_articles") // JSON格式的TOP互动文章
+  allArticles            String   @map("all_articles") // JSON格式的完整文章数据
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  // 新增AI分析相关字段
+  aiSummaries              String?  @map("ai_summaries")           // AI摘要JSON
+  structuredInfo           String?  @map("structured_info")        // 结构化信息JSON
+  aiInsights               String?  @map("ai_insights")            // AI洞察JSON
+
+  // 洞察分类追踪
+  ruleBasedInsights        String?  @map("rule_based_insights")    // 规则洞察JSON
+  aiGeneratedInsights      String?  @map("ai_generated_insights")  // 纯AI洞察JSON
+
+  // 元数据
+  analysisVersion          String   @default("1.0")                // 分析版本
+  aiModelUsed              String?  @map("ai_model_used")           // 使用的AI模型
+  processingTime           Int?     @map("processing_time")        // 处理耗时(秒)
+  aiAnalysisStatus         String?  @map("ai_analysis_status")     // AI分析状态
+
+  // 关联搜索历史
+  searchHistory SearchHistory @relation(fields: [searchHistoryId], references: [id], onDelete: Cascade)
+
+  @@map("analysis_results")
+}
