@@ -1,0 +1,109 @@
+/* Browser Compatibility Fixes */
+
+/* Touch Action Support */
+.touch-action {
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* User Select Support */
+.user-select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.user-select-text {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* User Drag Support */
+.user-drag-none {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -khtml-user-drag: none;
+}
+
+/* Background Clip Order */
+.background-clip-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* Text Size Adjust */
+.text-size-adjust-none {
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+}
+
+/* Fetch Priority Support */
+@supports not (link[fetchpriority]) {
+  .fetch-high {
+    /* Fallback for browsers that don't support fetchpriority */
+  }
+}
+
+/* Focus Styles for Better Accessibility */
+.focus-visible:focus {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .card {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+}
+
+/* Webkit Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}

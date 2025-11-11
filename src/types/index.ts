@@ -128,7 +128,7 @@ export interface RuleBasedInsight {
 
 // 扩展分析进度
 export interface EnhancedAnalysisProgress {
-  phase: 'fetching' | 'filtering' | 'summarizing' | 'extracting' | 'generating' | 'completed' | 'error';
+  phase: 'fetching' | 'filtering' | 'summarizing' | 'extracting' | 'analyzing' | 'generating' | 'completed' | 'error';
   message: string;
   current: number;
   total: number;
@@ -178,6 +178,47 @@ export interface AIAnalysisConfig {
   batchSize: number;
 }
 
+// TOP文章AI分析结果
+export interface TopArticleInsight {
+  articleId: string;
+  title: string;
+  summary: string;           // AI生成的文章摘要
+  keyArguments: string[];    // 核心论点
+  dataPoints: string[];      // 数据支撑
+  uniqueAngles: string[];    // 独特角度
+  targetAudience: string[];  // 目标受众
+  contentGaps: string[];     // 内容空白点
+  successFactors: string[];  // 成功因素
+  interactionPattern: {      // 互动模式分析
+    readEngagement: 'high' | 'medium' | 'low';
+    commentEngagement: 'high' | 'medium' | 'low';
+    sharePotential: 'high' | 'medium' | 'low';
+  };
+}
+
+// 结构化选题洞察
+export interface StructuredTopicInsight {
+  id: string;
+  title: string;              // 洞察标题
+  coreFinding: string;        // 核心发现
+  dataSupport: {              // 数据支撑
+    metric: string;
+    value: string;
+    description: string;
+  }[];
+  keywordAnalysis: {          // 关键词分析
+    highFrequency: string[];   // 高频词
+    missingKeywords: string[]; // 缺失词/机会词
+  };
+  recommendedTopics: string[]; // 推荐选题方向
+  contentStrategy: string[];   // 内容策略
+  targetAudience: string[];   // 目标受众
+  difficulty: 'low' | 'medium' | 'high';  // 难度评估
+  estimatedImpact: string;    // 预估影响
+  relatedArticles: string[];  // 相关文章ID
+  confidence: number;         // 洞察置信度 (0-1)
+}
+
 // 完整分析结果
 export interface CompleteAnalysisResult {
   keyword: string;
@@ -192,7 +233,16 @@ export interface CompleteAnalysisResult {
     avgInteraction: number;
   };
 
-  // AI分析结果
+  // 词云数据
+  wordCloud: Array<{ word: string; count: number }>;
+
+  // TOP文章AI分析结果
+  topArticleInsights: TopArticleInsight[];
+
+  // 结构化选题洞察
+  structuredTopicInsights: StructuredTopicInsight[];
+
+  // AI分析结果（保持向后兼容）
   aiSummaries: ArticleSummary[];
   structuredInfo: StructuredInfo;
   aiInsights: AIInsight[];

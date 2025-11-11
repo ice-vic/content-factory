@@ -6,6 +6,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: '内容工厂 - AI智能内容创作平台',
   description: '基于AI洞察的内容创作和发布管理平台',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
@@ -15,6 +19,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
+      <head>
+        <link rel="stylesheet" href="/styles/compatibility.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+        <meta name="theme-color" content="#3B82F6" />
+      </head>
       <body className={inter.className}>
         <div className="min-h-screen bg-gray-50">
           {children}

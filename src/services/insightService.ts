@@ -1,13 +1,15 @@
 import {
-  WechatArticle,
   ArticleSummary,
   StructuredInfo,
   AIInsight,
   RuleBasedInsight,
   CompleteAnalysisResult,
-  EnhancedAnalysisProgress
+  EnhancedAnalysisProgress,
+  TopArticleInsight,
+  StructuredTopicInsight
 } from '@/types';
 import {
+  WechatArticle,
   getTopLikedArticles,
   getTopInteractionArticles,
   generateWordCloud,
@@ -18,7 +20,9 @@ import {
   extractStructuredInfo,
   generateAIInsights,
   checkAIServiceAvailability,
-  estimateAnalysisCost
+  estimateAnalysisCost,
+  analyzeTopArticles,
+  generateStructuredTopicInsights
 } from './aiService';
 
 // 进度回调类型
@@ -75,74 +79,144 @@ export class AnalysisOrchestrator {
     // 第二步：基础统计
     const basicStats = this.calculateBasicStats(articles);
 
-    // 第三步：AI分析（如果可用）
+    // 第三步：词云生成
+    const wordCloud = generateWordCloud(articles);
+
+    // 第四步：TOP文章和AI分析
     let aiSummaries: ArticleSummary[] = [];
     let structuredInfo: StructuredInfo | null = null;
     let aiInsights: AIInsight[] = [];
+    let topArticleInsights: TopArticleInsight[] = [];
+    let structuredTopicInsights: StructuredTopicInsight[] = [];
 
     const aiServiceStatus = checkAIServiceAvailability();
 
-    if (aiServiceStatus.available && processedCount > 0) {
+    if (aiServiceStatus.available) {
       try {
-        // AI摘要生成
-        this.notifyProgress({
-          phase: 'summarizing',
-          message: '正在生成文章摘要...',
-          current: 0,
-          total: processedCount,
-          aiStep: 'AI文本分析'
-        });
+        // 步骤4.1: 筛选TOP文章（点赞TOP5 + 互动率TOP5）
+        const topLikedArticles = getTopLikedArticles(articles, 5);
+        const topInteractionArticles = getTopInteractionArticles(articles, 5);
 
-        aiSummaries = await generateBatchSummaries(filteredArticles.slice(0, processedCount));
+        // 合并并去重
+        const articleMap = new Map<string, WechatArticle>()
+        topLikedArticles.forEach(article => articleMap.set(article.title, article))
+        topInteractionArticles.forEach(article => articleMap.set(article.title, article))
+        const allTopArticles = Array.from(articleMap.values()).slice(0, 10); // 最多10篇
 
-        this.notifyProgress({
-          phase: 'summarizing',
-          message: `已完成${aiSummaries.length}篇文章的AI摘要`,
-          current: processedCount,
-          total: processedCount,
-          aiStep: '摘要生成完成'
-        });
+        // 步骤4.2: TOP文章深度分析
+        if (allTopArticles.length > 0) {
+          this.notifyProgress({
+            phase: 'analyzing',
+            message: '正在深度分析TOP文章...',
+            current: 0,
+            total: 100,
+            aiStep: 'TOP文章AI分析'
+          });
 
-        // 结构化信息提取
-        this.notifyProgress({
-          phase: 'extracting',
-          message: '正在提取结构化信息...',
-          current: 0,
-          total: 1,
-          aiStep: '信息结构化分析'
-        });
+          topArticleInsights = await analyzeTopArticles(
+            allTopArticles,
+            (phase, progress) => {
+              this.notifyProgress({
+                phase: 'analyzing',
+                message: phase,
+                current: progress,
+                total: 100,
+                aiStep: 'TOP文章分析中'
+              });
+            }
+          );
 
-        structuredInfo = await extractStructuredInfo(aiSummaries);
+          // 步骤4.3: 生成结构化选题洞察
+          this.notifyProgress({
+            phase: 'generating',
+            message: '正在生成结构化选题洞察...',
+            current: 0,
+            total: 100,
+            aiStep: '选题洞察分析'
+          });
 
-        this.notifyProgress({
-          phase: 'extracting',
-          message: '结构化信息提取完成',
-          current: 1,
-          total: 1,
-          aiStep: '信息提取完成'
-        });
+          structuredTopicInsights = await generateStructuredTopicInsights(
+            topArticleInsights,
+            keyword,
+            (phase, progress) => {
+              this.notifyProgress({
+                phase: 'generating',
+                message: phase,
+                current: progress,
+                total: 100,
+                aiStep: '选题洞察生成中'
+              });
+            }
+          );
+        }
 
-        // AI洞察生成
-        this.notifyProgress({
-          phase: 'generating',
-          message: '正在生成AI洞察...',
-          current: 0,
-          total: 1,
-          aiStep: '深度洞察分析'
-        });
+        // 步骤4.4: 传统AI分析（保持向后兼容）
+        if (processedCount > 0) {
+          // AI摘要生成
+          this.notifyProgress({
+            phase: 'summarizing',
+            message: '正在生成文章摘要...',
+            current: 0,
+            total: processedCount,
+            aiStep: 'AI文本分析'
+          });
 
-        aiInsights = await generateAIInsights(structuredInfo);
+          aiSummaries = await generateBatchSummaries(filteredArticles.slice(0, processedCount));
 
-        this.notifyProgress({
-          phase: 'generating',
-          message: `已生成${aiInsights.length}条AI洞察`,
-          current: 1,
-          total: 1,
-          aiStep: '洞察生成完成'
-        });
+          this.notifyProgress({
+            phase: 'summarizing',
+            message: `已完成${aiSummaries.length}篇文章的AI摘要`,
+            current: processedCount,
+            total: processedCount,
+            aiStep: '摘要生成完成'
+          });
 
+          // 结构化信息提取
+          this.notifyProgress({
+            phase: 'extracting',
+            message: '正在提取结构化信息...',
+            current: 0,
+            total: 1,
+            aiStep: '信息结构化分析'
+          });
+
+          structuredInfo = await extractStructuredInfo(aiSummaries);
+
+          this.notifyProgress({
+            phase: 'extracting',
+            message: '结构化信息提取完成',
+            current: 1,
+            total: 1,
+            aiStep: '信息提取完成'
+          });
+
+          // AI洞察生成
+          this.notifyProgress({
+            phase: 'generating',
+            message: '正在生成传统AI洞察...',
+            current: 0,
+            total: 1,
+            aiStep: '深度洞察分析'
+          });
+
+          aiInsights = await generateAIInsights(structuredInfo);
+
+          this.notifyProgress({
+            phase: 'generating',
+            message: `已生成${aiInsights.length}条传统AI洞察`,
+            current: 1,
+            total: 1,
+            aiStep: '传统洞察生成完成'
+          });
+        }
       } catch (error) {
-        console.error('AI分析失败:', error);
+        console.error('❌ AI分析失败:', error);
+        console.error('❌ 错误详情:', {
+          message: error instanceof Error ? error.message : '未知错误',
+          stack: error instanceof Error ? error.stack : '无堆栈信息',
+          allTopArticlesCount: allTopArticles?.length || 0,
+          keyword: keyword
+        });
         this.notifyProgress({
           phase: 'error',
           message: `AI分析失败: ${error instanceof Error ? error.message : '未知错误'}`,
@@ -151,17 +225,9 @@ export class AnalysisOrchestrator {
           aiStep: 'AI分析异常'
         });
       }
-    } else {
-      this.notifyProgress({
-        phase: 'generating',
-        message: aiServiceStatus.error || 'AI服务不可用，使用规则分析',
-        current: 0,
-        total: 1,
-        aiStep: '规则分析模式'
-      });
     }
 
-    // 第四步：规则分析（始终执行）
+    // 第五步：规则分析（始终执行）
     const ruleInsights = this.generateRuleBasedInsights(articles, keyword);
 
     // 计算处理时间
@@ -173,6 +239,9 @@ export class AnalysisOrchestrator {
       totalArticles: articles.length,
       processedArticles: processedCount,
       basicStats,
+      wordCloud,
+      topArticleInsights,
+      structuredTopicInsights,
       aiSummaries,
       structuredInfo: structuredInfo || {
         keywords: [],

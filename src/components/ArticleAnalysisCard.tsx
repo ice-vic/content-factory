@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { WechatArticle, ArticleSummary } from '@/types';
+import { WechatArticle } from '@/services/wechatService';
+import { ArticleSummary } from '@/types';
 
 // 文章分析卡片属性
 interface ArticleAnalysisCardProps {

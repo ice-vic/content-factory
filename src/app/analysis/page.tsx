@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Navigation from '@/components/Navigation'
 import { InsightList } from '@/components/InsightCard'
 import ArticleList from '@/components/ArticleList'
+import { ReadDistributionChart } from '@/components/ReadDistributionChart'
+import { PublishTimeAnalysis } from '@/components/PublishTimeAnalysis'
+import { StructuredTopicInsights } from '@/components/StructuredTopicInsights'
 import {
   SearchIcon,
   RefreshCwIcon,
@@ -20,14 +23,17 @@ import {
 } from 'lucide-react'
 import {
   searchWechatArticles,
-  WechatArticle
+  WechatArticle,
+  calculateInteractionRate
 } from '@/services/wechatService'
 import {
   analyzeArticlesWithAI,
-  getAnalysisEstimate,
+  getAnalysisEstimate
+} from '@/services/insightService'
+import {
   CompleteAnalysisResult,
   EnhancedAnalysisProgress
-} from '@/services/insightService'
+} from '@/types'
 import {
   checkAIServiceAvailability,
   getAIConfig
@@ -74,10 +80,10 @@ export default function AnalysisPage() {
     fetchAIStatus()
   }, [])
 
-  // 计算进度百分比
-  const getProgressPercentage = (progress: EnhancedAnalysisProgress): number => {
+  // 计算进度百分比 - 使用useCallback优化
+  const getProgressPercentage = useCallback((progress: EnhancedAnalysisProgress): number => {
     return Math.round((progress.current / progress.total) * 100)
-  }
+  }, [])
 
   const handleStartAnalysis = async () => {
     if (!keyword.trim()) return
@@ -227,6 +233,25 @@ export default function AnalysisPage() {
     // 这里可以根据需要添加预估逻辑
   }
 
+  // 优化排序计算 - 使用useMemo避免重复排序
+  const topLikedArticles = useMemo(() => {
+    return articles
+      .slice()
+      .sort((a, b) => b.praise - a.praise)
+      .slice(0, 5)
+  }, [articles])
+
+  const topInteractionArticles = useMemo(() => {
+    return articles
+      .slice()
+      .map(article => ({
+        ...article,
+        interactionRate: calculateInteractionRate(article)
+      }))
+      .sort((a, b) => b.interactionRate - a.interactionRate)
+      .slice(0, 5)
+  }, [articles])
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -272,14 +297,17 @@ export default function AnalysisPage() {
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1">
               <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" aria-hidden="true" />
+                <label htmlFor="keyword-input" className="sr-only">搜索关键词</label>
                 <input
+                  id="keyword-input"
                   type="text"
                   value={keyword}
                   onChange={(e) => handleKeywordChange(e.target.value)}
                   placeholder="输入关键词进行分析，如：AI创业、内容营销..."
                   className="input pl-10 w-full"
                   onKeyDown={(e) => e.key === 'Enter' && handleStartAnalysis()}
+                  aria-describedby="search-help"
                 />
               </div>
             </div>
@@ -313,12 +341,13 @@ export default function AnalysisPage() {
           {/* 历史记录 */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-500">热门搜索：</span>
-            <div className="flex flex-wrap gap-2">
+            <div id="popular-keywords" className="flex flex-wrap gap-2">
               {recentKeywords.map((kw, index) => (
                 <button
-                  key={index}
+                  key={`popular-keyword-${index}`}
                   onClick={() => setKeyword(kw)}
                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                  aria-label={`搜索关键词: ${kw}`}
                 >
                   {kw}
                 </button>
@@ -349,7 +378,11 @@ export default function AnalysisPage() {
               </div>
 
               {/* 进度条 */}
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-4" role="progressbar"
+                   aria-valuenow={getProgressPercentage(analysisProgress)}
+                   aria-valuemin={0}
+                   aria-valuemax={100}
+                   aria-label="分析进度">
                 <div
                   className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${getProgressPercentage(analysisProgress)}%` }}
@@ -358,16 +391,16 @@ export default function AnalysisPage() {
 
               {/* 当前步骤 */}
               <div className="flex items-center space-x-3 mb-2">
-                {analysisProgress.phase === 'fetching' && <SearchIcon2 className="w-5 h-5 text-blue-600" />}
-                {analysisProgress.phase === 'filtering' && <FilterIcon className="w-5 h-5 text-blue-600" />}
-                {analysisProgress.phase === 'summarizing' && <BrainIcon className="w-5 h-5 text-purple-600" />}
-                {analysisProgress.phase === 'extracting' && <ZapIcon className="w-5 h-5 text-purple-600" />}
-                {analysisProgress.phase === 'generating' && <LightbulbIcon className="w-5 h-5 text-purple-600" />}
-                {analysisProgress.phase === 'completed' && <CheckIcon className="w-5 h-5 text-green-600" />}
-                {analysisProgress.phase === 'error' && <AlertCircleIcon className="w-5 h-5 text-red-600" />}
+                {analysisProgress.phase === 'fetching' && <SearchIcon2 className="w-5 h-5 text-blue-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'filtering' && <FilterIcon className="w-5 h-5 text-blue-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'summarizing' && <BrainIcon className="w-5 h-5 text-purple-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'extracting' && <ZapIcon className="w-5 h-5 text-purple-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'generating' && <LightbulbIcon className="w-5 h-5 text-purple-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'completed' && <CheckIcon className="w-5 h-5 text-green-600" aria-hidden="true" />}
+                {analysisProgress.phase === 'error' && <AlertCircleIcon className="w-5 h-5 text-red-600" aria-hidden="true" />}
 
                 <div>
-                  <p className="font-medium text-gray-900">{analysisProgress.message}</p>
+                  <p className="font-medium text-gray-900" role="status" aria-live="polite">{analysisProgress.message}</p>
                   {analysisProgress.aiStep && (
                     <p className="text-sm text-gray-600">{analysisProgress.aiStep}</p>
                   )}
@@ -438,25 +471,23 @@ export default function AnalysisPage() {
                   <h3 className="text-lg font-semibold text-gray-900">点赞量最高的5篇文章</h3>
                 </div>
                 <div className="space-y-3">
-                  {articles
-                    .sort((a, b) => b.like_num - a.like_num)
-                    .slice(0, 5)
+                  {topLikedArticles
                     .map((article, index) => (
-                      <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <span className="flex-shrink-0 w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      <article key={`top-like-${article.publish_time}-${index}`} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <span className="flex-shrink-0 w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-sm font-medium" aria-label={`排名第${index + 1}`}>
                           {index + 1}
                         </span>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">{article.title}</h4>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span className="flex items-center space-x-1">
-                                <span>❤️</span>
-                                <span>{(article.like_num || article.praise || 0).toLocaleString()}</span>
+                              <span className="flex items-center space-x-1" aria-label={`点赞数: ${(article.praise || 0).toLocaleString()}`}>
+                                <span aria-hidden="true">❤️</span>
+                                <span>{(article.praise || 0).toLocaleString()}</span>
                               </span>
-                              <span className="flex items-center space-x-1">
-                                <span>👁️</span>
-                                <span>{(article.read_num || article.read || 0).toLocaleString()}</span>
+                              <span className="flex items-center space-x-1" aria-label={`阅读量: ${(article.read || 0).toLocaleString()}`}>
+                                <span aria-hidden="true">👁️</span>
+                                <span>{(article.read || 0).toLocaleString()}</span>
                               </span>
                               {article.is_original === 1 && (
                                 <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">原创</span>
@@ -468,13 +499,14 @@ export default function AnalysisPage() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                              aria-label={`查看原文: ${article.title}`}
                             >
                               <span>查看原文</span>
-                              <ExternalLinkIcon className="w-3 h-3" />
+                              <ExternalLinkIcon className="w-3 h-3" aria-hidden="true" />
                             </a>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     ))}
                 </div>
               </div>
@@ -488,29 +520,23 @@ export default function AnalysisPage() {
                   <h3 className="text-lg font-semibold text-gray-900">互动率最高的5篇文章</h3>
                 </div>
                 <div className="space-y-3">
-                  {articles
-                    .map(article => ({
-                      ...article,
-                      interactionRate: article.read_num > 0 ? ((article.like_num + (article.comment_num || article.looking || 0)) / article.read_num * 100) : 0
-                    }))
-                    .sort((a, b) => b.interactionRate - a.interactionRate)
-                    .slice(0, 5)
+                  {topInteractionArticles
                     .map((article, index) => (
-                      <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      <article key={`top-interaction-${article.publish_time}-${index}`} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium" aria-label={`排名第${index + 1}`}>
                           {index + 1}
                         </span>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">{article.title}</h4>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span className="flex items-center space-x-1">
-                                <span>📊</span>
+                              <span className="flex items-center space-x-1" aria-label={`互动率: ${article.interactionRate.toFixed(1)}%`}>
+                                <span aria-hidden="true">📊</span>
                                 <span>互动率 {article.interactionRate.toFixed(1)}%</span>
                               </span>
-                              <span className="flex items-center space-x-1">
-                                <span>💬</span>
-                                <span>{article.comment_num || article.looking || 0} 评论</span>
+                              <span className="flex items-center space-x-1" aria-label={`在看数: ${article.looking || 0}`}>
+                                <span aria-hidden="true">💬</span>
+                                <span>{article.looking || 0} 在看</span>
                               </span>
                               {article.is_original === 1 && (
                                 <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">原创</span>
@@ -522,42 +548,160 @@ export default function AnalysisPage() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                              aria-label={`查看原文: ${article.title}`}
                             >
                               <span>查看原文</span>
-                              <ExternalLinkIcon className="w-3 h-3" />
+                              <ExternalLinkIcon className="w-3 h-3" aria-hidden="true" />
                             </a>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     ))}
                 </div>
               </div>
             </div>
 
             {/* 高频词云展示 */}
-            {completeAnalysisResult.wordCloud && completeAnalysisResult.wordCloud.length > 0 && (
-              <div className="card p-6">
+            {articles.length > 0 && (
+              <section className="card p-6" aria-labelledby="wordcloud-heading">
                 <div className="flex items-center space-x-2 mb-4">
-                  <CloudIcon className="w-5 h-5 text-blue-500" />
-                  <h3 className="text-lg font-semibold text-gray-900">高频词云</h3>
+                  <CloudIcon className="w-5 h-5 text-blue-500" aria-hidden="true" />
+                  <h3 id="wordcloud-heading" className="text-lg font-semibold text-gray-900">高频词云</h3>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {completeAnalysisResult.wordCloud.map((item, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors"
-                      style={{
-                        fontSize: `${Math.max(12, Math.min(20, item.count / 2))}px`,
-                        opacity: Math.max(0.6, Math.min(1, item.count / 50))
-                      }}
-                      title={`出现次数: ${item.count}`}
-                    >
-                      {item.word} ({item.count})
-                    </span>
-                  ))}
-                </div>
-              </div>
+                {completeAnalysisResult.wordCloud && completeAnalysisResult.wordCloud.length > 0 ? (
+                  <div className="flex flex-wrap gap-2" role="list" aria-label="关键词词云">
+                    {completeAnalysisResult.wordCloud.map((item: { word: string; count: number }, index: number) => (
+                      <span
+                        key={`wordcloud-${item.word}-${index}`}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200 transition-colors"
+                        style={{
+                          fontSize: `${Math.max(12, Math.min(20, item.count / 2))}px`,
+                          opacity: Math.max(0.6, Math.min(1, item.count / 50))
+                        }}
+                        title={`出现次数: ${item.count}`}
+                        role="listitem"
+                        aria-label={`关键词: ${item.word}, 出现次数: ${item.count}`}
+                      >
+                        {item.word} ({item.count})
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <CloudIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" aria-hidden="true" />
+                    <p className="text-gray-500">词云数据生成中...</p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      基于 {articles.length} 篇文章的标题分析关键词
+                    </p>
+                  </div>
+                )}
+              </section>
             )}
+
+            {/* 数据分析板块 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* 阅读量分布柱状图 */}
+              <ReadDistributionChart articles={articles} />
+
+              {/* 发布时间分析 */}
+              <PublishTimeAnalysis articles={articles} />
+            </div>
+
+            {/* 选题洞察分析 */}
+            <div className="space-y-8">
+              {/* 结构化选题洞察（优先展示） */}
+              {(() => {
+                console.log('🔍 检查结构化选题洞察:', {
+                  hasStructuredTopicInsights: !!completeAnalysisResult.structuredTopicInsights,
+                  length: completeAnalysisResult.structuredTopicInsights?.length || 0,
+                  aiAvailable: completeAnalysisResult.metadata?.modelUsed !== 'rule-based',
+                  modelUsed: completeAnalysisResult.metadata?.modelUsed,
+                  topArticleInsightsCount: completeAnalysisResult.topArticleInsights?.length || 0
+                });
+                return completeAnalysisResult.structuredTopicInsights && completeAnalysisResult.structuredTopicInsights.length > 0;
+              })() && (
+                <div>
+                  <div className="flex items-center space-x-2 mb-6">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <span className="text-purple-600">🎯</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      AI结构化选题洞察 ({completeAnalysisResult.structuredTopicInsights.length}条)
+                    </h3>
+                  </div>
+                  <StructuredTopicInsights
+                    insights={completeAnalysisResult.structuredTopicInsights}
+                    maxItems={10}
+                  />
+                </div>
+              )}
+
+              {/* 强制显示结构化选题洞察（调试用） */}
+              <div>
+                <div className="flex items-center space-x-2 mb-6">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-purple-600">🎯</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    AI结构化选题洞察 (调试: {completeAnalysisResult.structuredTopicInsights?.length || 0}条)
+                  </h3>
+                </div>
+                {completeAnalysisResult.structuredTopicInsights && completeAnalysisResult.structuredTopicInsights.length > 0 ? (
+                  <StructuredTopicInsights
+                    insights={completeAnalysisResult.structuredTopicInsights}
+                    maxItems={10}
+                  />
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-yellow-800">
+                      <strong>调试信息:</strong> 没有AI结构化选题洞察数据。可能原因：
+                      <br />1. AI分析功能未启用或失败
+                      <br />2. TOP文章数据不足
+                      <br />3. 查看的是缓存的历史结果
+                      <br />4. 使用的模型: {completeAnalysisResult.metadata?.modelUsed || '未知'}
+                      <br />5. TOP文章分析数量: {completeAnalysisResult.topArticleInsights?.length || 0}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 传统洞察展示（作为补充） */}
+              {(completeAnalysisResult.aiInsights.length > 0 || completeAnalysisResult.ruleInsights.length > 0) && (
+                <div>
+                  <div className="flex items-center space-x-2 mb-6">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600">📊</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      传统分析洞察
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* AI洞察 */}
+                    {completeAnalysisResult.aiInsights.length > 0 && (
+                      <div>
+                        <InsightList
+                          insights={completeAnalysisResult.aiInsights}
+                          title={`🤖 AI深度洞察 (${completeAnalysisResult.aiInsights.length}条)`}
+                          maxItems={5}
+                        />
+                      </div>
+                    )}
+
+                    {/* 规则洞察 */}
+                    {completeAnalysisResult.ruleInsights.length > 0 && (
+                      <div>
+                        <InsightList
+                          insights={completeAnalysisResult.ruleInsights}
+                          title={`📈 数据分析洞察 (${completeAnalysisResult.ruleInsights.length}条)`}
+                          maxItems={5}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* 完整文章列表展示 */}
             <div className="card p-6">
@@ -577,32 +721,6 @@ export default function AnalysisPage() {
               />
             </div>
 
-            {/* AI洞察展示 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* AI洞察 */}
-              {completeAnalysisResult.aiInsights.length > 0 && (
-                <div>
-                  <InsightList
-                    insights={completeAnalysisResult.aiInsights}
-                    title={`🤖 AI深度洞察 (${completeAnalysisResult.aiInsights.length}条)`}
-                    maxItems={5}
-                  />
-                </div>
-              )}
-
-              {/* 规则洞察 */}
-              {completeAnalysisResult.ruleInsights.length > 0 && (
-                <div>
-                  <InsightList
-                    insights={completeAnalysisResult.ruleInsights}
-                    title={`📊 数据分析洞察 (${completeAnalysisResult.ruleInsights.length}条)`}
-                    maxItems={5}
-                  />
-                </div>
-              )}
-            </div>
-
-  
             {/* 分析元数据 */}
             <div className="card p-4 bg-gray-50">
               <div className="flex items-center justify-between text-sm text-gray-600">

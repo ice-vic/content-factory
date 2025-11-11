@@ -15,9 +15,22 @@ import {
   AlertCircleIcon
 } from 'lucide-react'
 
+// 类型定义
+interface ShowApiKeys {
+  [key: string]: boolean
+}
+
+interface TestStatuses {
+  [key: string]: string
+}
+
+interface ApiConfig {
+  [key: string]: string | number
+}
+
 export default function SettingsPage() {
   // API配置状态
-  const [apiConfig, setApiConfig] = useState({
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({
     openaiApiKey: '',
     openaiBaseUrl: 'https://api.openai.com/v1',
     openaiModel: 'gpt-3.5-turbo',
@@ -30,14 +43,14 @@ export default function SettingsPage() {
   })
 
   // 显示状态
-  const [showApiKeys, setShowApiKeys] = useState({
+  const [showApiKeys, setShowApiKeys] = useState<ShowApiKeys>({
     openai: false,
     claude: false,
     gemini: false
   })
 
   // 测试状态
-  const [testStatus, setTestStatus] = useState({
+  const [testStatus, setTestStatus] = useState<TestStatuses>({
     openai: 'idle',
     claude: 'idle',
     gemini: 'idle'
@@ -77,7 +90,7 @@ export default function SettingsPage() {
   ]
 
   // 处理输入变化
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setApiConfig(prev => ({
       ...prev,
       [field]: value
@@ -85,7 +98,7 @@ export default function SettingsPage() {
   }
 
   // 测试API连接
-  const testApiConnection = async (provider) => {
+  const testApiConnection = async (provider: string) => {
     setTestStatus(prev => ({ ...prev, [provider]: 'loading' }))
 
     // 模拟API测试
@@ -120,7 +133,7 @@ export default function SettingsPage() {
   }
 
   // 切换API密钥显示
-  const toggleApiKeyVisibility = (provider) => {
+  const toggleApiKeyVisibility = (provider: string) => {
     setShowApiKeys(prev => ({
       ...prev,
       [provider]: !prev[provider]

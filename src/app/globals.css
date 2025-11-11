@@ -2,9 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Browser Compatibility Fixes */
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900;
+    /* Text Size Adjust */
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  * {
+    /* Touch Action */
+    touch-action: manipulation;
+    -ms-touch-action: manipulation;
   }
 }
 
@@ -39,5 +51,32 @@
 
   .loading-spinner {
     @apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+
+  /* User Select Compatibility */
+  .user-select-none {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  /* User Drag Compatibility */
+  .user-drag-none {
+    -webkit-user-drag: none;
+    user-drag: none;
+    -khtml-user-drag: none;
+  }
+
+  /* Background Clip Order */
+  .bg-clip-text {
+    background-clip: text;
+    -webkit-background-clip: text;
+  }
+
+  /* Focus Visible for Better Accessibility */
+  .focus-visible:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
   }
 }
