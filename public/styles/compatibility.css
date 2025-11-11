@@ -107,3 +107,108 @@
   scrollbar-width: thin;
   scrollbar-color: #c1c1c1 #f1f1f1;
 }
+
+/* CSS Grid Support for Older Browsers */
+@supports not (display: grid) {
+  .grid-fallback {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .grid-fallback > * {
+    flex: 1 1 300px;
+    margin: 0.5rem;
+  }
+}
+
+/* Custom Properties Support */
+@supports not (--custom-property: value) {
+  .btn-primary {
+    background-color: #2563eb !important;
+  }
+
+  .btn-secondary {
+    background-color: #e5e7eb !important;
+  }
+}
+
+/* Object Fit Support */
+@supports not (object-fit: cover) {
+  .object-fit-cover {
+    width: 100%;
+    height: 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+}
+
+/* Aspect Ratio Support */
+@supports not (aspect-ratio: 16 / 9) {
+  .aspect-ratio-16-9 {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 ratio */
+  }
+
+  .aspect-ratio-16-9 > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Gap Support for Flexbox */
+@supports not (gap: 1rem) {
+  .gap-4 {
+    margin-top: -1rem;
+  }
+
+  .gap-4 > * {
+    margin-top: 1rem;
+  }
+}
+
+/* Backdrop Filter Support */
+@supports not (backdrop-filter: blur(10px)) {
+  .backdrop-blur {
+    background-color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* Input Type Support */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+}
+
+/* Safari Input Fix */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea {
+  -webkit-appearance: none;
+  border-radius: 0;
+}
+
+/* Button Reset */
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

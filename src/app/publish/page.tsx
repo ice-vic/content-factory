@@ -309,7 +309,7 @@ export default function PublishPage() {
                         <div className="flex items-center space-x-3">
                           <img
                             src={article.thumbnail}
-                            alt=""
+                            alt={`${article.title}的缩略图`}
                             className="w-12 h-8 object-cover rounded"
                           />
                           <div>

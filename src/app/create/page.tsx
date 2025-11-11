@@ -155,13 +155,18 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="insight-select"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     基于洞察点
                   </label>
                   <select
+                    id="insight-select"
                     value={selectedInsight}
                     onChange={(e) => setSelectedInsight(e.target.value)}
                     className="input w-full"
+                    title="选择分析结果中的洞察点作为内容创作基础"
                   >
                     <option value="">选择洞察点...</option>
                     {insightOptions.map((option, index) => (
@@ -175,15 +180,20 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 <div className="text-center text-gray-400 text-sm">或</div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="custom-topic"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     自定义主题
                   </label>
                   <input
+                    id="custom-topic"
                     type="text"
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
                     placeholder="输入自定义主题..."
                     className="input w-full"
+                    title="输入自定义主题进行内容创作"
                   />
                 </div>
               </div>
@@ -389,13 +399,14 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                         )
                       }
                       if (paragraph.includes('![')) {
-                        const match = paragraph.match(/!\[.*?\]\((.*?)\)/)
+                        const match = paragraph.match(/!\[(.*?)\]\((.*?)\)/)
                         if (match) {
+                          const altText = match[1] || '生成的图片'
                           return (
                             <div key={index} className="my-6">
                               <img
-                                src={match[1]}
-                                alt=""
+                                src={match[2]}
+                                alt={altText}
                                 className="w-full rounded-lg shadow-sm"
                               />
                             </div>
