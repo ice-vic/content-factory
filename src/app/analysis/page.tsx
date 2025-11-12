@@ -259,6 +259,9 @@ export default function AnalysisPage() {
           avgLike: analysisResult.basicStats.avgLike,
           originalRate: analysisResult.basicStats.originalRate,
           articles: allArticles,
+          wordCloud: analysisResult.wordCloud,
+          topLikedArticles: analysisResult.topArticleInsights?.map(insight => insight.article) || [],
+          topInteractionArticles: [], // 可以从analysisResult中计算
           aiSummaries: analysisResult.aiSummaries,
           structuredInfo: analysisResult.structuredInfo,
           aiInsights: analysisResult.aiInsights,
@@ -729,35 +732,6 @@ export default function AnalysisPage() {
                   />
                 </div>
               )}
-
-              {/* 强制显示结构化选题洞察（调试用） */}
-              <div>
-                <div className="flex items-center space-x-2 mb-6">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <span className="text-purple-600">🎯</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    AI结构化选题洞察 (调试: {completeAnalysisResult.structuredTopicInsights?.length || 0}条)
-                  </h3>
-                </div>
-                {completeAnalysisResult.structuredTopicInsights && completeAnalysisResult.structuredTopicInsights.length > 0 ? (
-                  <StructuredTopicInsights
-                    insights={completeAnalysisResult.structuredTopicInsights}
-                    maxItems={10}
-                  />
-                ) : (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <p className="text-yellow-800">
-                      <strong>调试信息:</strong> 没有AI结构化选题洞察数据。可能原因：
-                      <br />1. AI分析功能未启用或失败
-                      <br />2. TOP文章数据不足
-                      <br />3. 查看的是缓存的历史结果
-                      <br />4. 使用的模型: {completeAnalysisResult.metadata?.modelUsed || '未知'}
-                      <br />5. TOP文章分析数量: {completeAnalysisResult.topArticleInsights?.length || 0}
-                    </p>
-                  </div>
-                )}
-              </div>
 
               {/* 传统洞察展示（作为补充） */}
               {(completeAnalysisResult.aiInsights.length > 0 || completeAnalysisResult.ruleInsights.length > 0) && (

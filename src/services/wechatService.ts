@@ -222,10 +222,29 @@ export function generateWordCloud(articles: WechatArticle[]): Array<{ word: stri
 
   // 从标题中提取关键词
   articles.forEach(article => {
-    const words = article.title
-      .replace(/[，。！？；：""''（）【】]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 1 && word.length < 10)
+    // 更好的中文分词逻辑
+    let cleanedTitle = article.title
+      .replace(/[，。！？；：""''（）【｜｜]/g, ' ')  // 替换标点符号为空格
+      .replace(/[a-zA-Z0-9]/g, ' ')  // 替换英文数字为空格，专注于中文
+      .replace(/\s+/g, ' ')  // 合并多个空格
+      .trim()
+
+    // 提取2-4字的中文词汇
+    const words: string[] = []
+    for (let i = 0; i < cleanedTitle.length; i++) {
+      // 尝试不同长度的词汇，优先长词
+      for (let len = 4; len >= 2; len--) {
+        if (i + len <= cleanedTitle.length) {
+          const word = cleanedTitle.substring(i, i + len)
+          // 只保留中文字符
+          if (/^[\u4e00-\u9fa5]+$/.test(word)) {
+            words.push(word)
+            i += len - 1  // 跳过已处理的字符
+            break
+          }
+        }
+      }
+    }
 
     words.forEach(word => {
       wordCount.set(word, (wordCount.get(word) || 0) + 1)

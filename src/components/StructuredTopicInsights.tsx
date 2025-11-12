@@ -129,63 +129,101 @@ export const StructuredTopicInsights = React.memo(function StructuredTopicInsigh
             {isExpanded && (
               <div className="border-t pt-4 mt-4 space-y-4">
                 {/* 数据支撑 */}
-                {insight.dataSupport.length > 0 && (
+                {insight.dataSupport && (
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
                       <BarChart3Icon className="w-4 h-4 text-blue-600" />
                       <h4 className="font-medium text-gray-900">数据支撑</h4>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {insight.dataSupport.map((data, dataIndex) => (
-                        <div key={`data-${insight.id}-${dataIndex}`} className="bg-blue-50 p-3 rounded-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-blue-900">{data.metric}</span>
-                            <span className="text-sm font-bold text-blue-700">{data.value}</span>
+                    {Array.isArray(insight.dataSupport) ? (
+                      // 如果是数组格式
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {insight.dataSupport.map((data, dataIndex) => (
+                          <div key={`data-${insight.id}-${dataIndex}`} className="bg-blue-50 p-3 rounded-lg">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-blue-900">{data.metric}</span>
+                              <span className="text-sm font-bold text-blue-700">{data.value}</span>
+                            </div>
+                            <p className="text-xs text-blue-700">{data.description}</p>
                           </div>
-                          <p className="text-xs text-blue-700">{data.description}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      // 如果是对象格式（历史记录中的格式）
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-blue-900">平均阅读量</span>
+                            <span className="text-sm font-bold text-blue-700">{insight.dataSupport.avgRead || 0}</span>
+                          </div>
+                          <p className="text-xs text-blue-700">文章平均阅读次数</p>
                         </div>
-                      ))}
-                    </div>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-blue-900">平均点赞数</span>
+                            <span className="text-sm font-bold text-blue-700">{insight.dataSupport.avgLike || 0}</span>
+                          </div>
+                          <p className="text-xs text-blue-700">文章平均点赞次数</p>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-blue-900">点赞率</span>
+                            <span className="text-sm font-bold text-blue-700">{insight.dataSupport.likeRate || 0}%</span>
+                          </div>
+                          <p className="text-xs text-blue-700">点赞与阅读比率</p>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-blue-900">样本数量</span>
+                            <span className="text-sm font-bold text-blue-700">{insight.dataSupport.sampleSize || 0}</span>
+                          </div>
+                          <p className="text-xs text-blue-700">分析的文章总数</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* 关键词分析 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {insight.keywordAnalysis.highFrequency.length > 0 && (
-                    <div>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <TrendingUpIcon className="w-4 h-4 text-green-600" />
-                        <h4 className="font-medium text-gray-900">高频词</h4>
+                {insight.keywordAnalysis && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {insight.keywordAnalysis.highFrequency && insight.keywordAnalysis.highFrequency.length > 0 && (
+                      <div>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <TrendingUpIcon className="w-4 h-4 text-green-600" />
+                          <h4 className="font-medium text-gray-900">高频词</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {insight.keywordAnalysis.highFrequency.map((word, wordIndex) => (
+                            <span key={`hf-${insight.id}-${wordIndex}`} className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                              {word}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {insight.keywordAnalysis.highFrequency.map((word, wordIndex) => (
-                          <span key={`hf-${insight.id}-${wordIndex}`} className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                            {word}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {insight.keywordAnalysis.missingKeywords.length > 0 && (
-                    <div>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <TargetIcon className="w-4 h-4 text-orange-600" />
-                        <h4 className="font-medium text-gray-900">机会关键词</h4>
+                    {(insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity) &&
+                     (insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity).length > 0 && (
+                      <div>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <TargetIcon className="w-4 h-4 text-orange-600" />
+                          <h4 className="font-medium text-gray-900">机会关键词</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {(insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity || []).map((word, wordIndex) => (
+                            <span key={`mk-${insight.id}-${wordIndex}`} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
+                              {word}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {insight.keywordAnalysis.missingKeywords.map((word, wordIndex) => (
-                          <span key={`mk-${insight.id}-${wordIndex}`} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
-                            {word}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 推荐选题 */}
-                {insight.recommendedTopics.length > 0 && (
+                {insight.recommendedTopics && insight.recommendedTopics.length > 0 && (
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
                       <LightbulbIcon className="w-4 h-4 text-purple-600" />
@@ -203,7 +241,7 @@ export const StructuredTopicInsights = React.memo(function StructuredTopicInsigh
                 )}
 
                 {/* 内容策略 */}
-                {insight.contentStrategy.length > 0 && (
+                {insight.contentStrategy && insight.contentStrategy.length > 0 && (
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
                       <TargetIcon className="w-4 h-4 text-indigo-600" />
@@ -221,24 +259,30 @@ export const StructuredTopicInsights = React.memo(function StructuredTopicInsigh
                 )}
 
                 {/* 目标受众 */}
-                {insight.targetAudience.length > 0 && (
+                {insight.targetAudience && (
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
                       <UsersIcon className="w-4 h-4 text-cyan-600" />
                       <h4 className="font-medium text-gray-900">目标受众</h4>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {insight.targetAudience.map((audience, audienceIndex) => (
-                        <span key={`audience-${insight.id}-${audienceIndex}`} className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs">
-                          {audience}
-                        </span>
-                      ))}
-                    </div>
+                    {typeof insight.targetAudience === 'string' ? (
+                      <div className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs">
+                        {insight.targetAudience}
+                      </div>
+                    ) : insight.targetAudience.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {insight.targetAudience.map((audience, audienceIndex) => (
+                          <span key={`audience-${insight.id}-${audienceIndex}`} className="px-2 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs">
+                            {audience}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 )}
 
                 {/* 相关文章 */}
-                {insight.relatedArticles.length > 0 && (
+                {insight.relatedArticles && insight.relatedArticles.length > 0 && (
                   <div className="text-xs text-gray-500">
                     <strong>相关文章数:</strong> {insight.relatedArticles.length}
                   </div>

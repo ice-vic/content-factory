@@ -285,18 +285,25 @@ export default function HistoryDetailPage() {
                   <h3 className="text-lg font-semibold text-gray-900">高频词云</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {history.analysisResult.wordCloud.map((item, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
-                      style={{
-                        fontSize: `${Math.max(12, Math.min(20, item.count / 2))}px`,
-                        opacity: Math.max(0.6, Math.min(1, item.count / 50))
-                      }}
-                    >
-                      {item.word} ({item.count})
-                    </span>
-                  ))}
+                  {history.analysisResult.wordCloud && history.analysisResult.wordCloud.length > 0 ? (
+                    history.analysisResult.wordCloud.map((item, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                        style={{
+                          fontSize: `${Math.max(12, Math.min(20, item.count / 2))}px`,
+                          opacity: Math.max(0.6, Math.min(1, item.count / 50))
+                        }}
+                      >
+                        {item.word} ({item.count})
+                      </span>
+                    ))
+                  ) : (
+                    <div className="w-full py-8 text-center text-gray-500">
+                      <CloudIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>暂无词云数据</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -307,14 +314,21 @@ export default function HistoryDetailPage() {
                   <h3 className="text-lg font-semibold text-gray-900">选题洞察</h3>
                 </div>
                 <div className="space-y-3">
-                  {history.analysisResult.insights.map((insight, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <span className="flex-shrink-0 w-6 h-6 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-sm font-medium">
-                        {index + 1}
-                      </span>
-                      <p className="text-gray-700">{insight}</p>
+                  {history.analysisResult.insights && history.analysisResult.insights.length > 0 ? (
+                    history.analysisResult.insights.map((insight, index) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center text-sm font-medium">
+                          {index + 1}
+                        </span>
+                        <p className="text-gray-700">{insight}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-gray-500">
+                      <LightbulbIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>暂无传统选题洞察</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>

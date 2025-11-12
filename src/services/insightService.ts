@@ -88,6 +88,7 @@ export class AnalysisOrchestrator {
     let aiInsights: AIInsight[] = [];
     let topArticleInsights: TopArticleInsight[] = [];
     let structuredTopicInsights: StructuredTopicInsight[] = [];
+    let allTopArticles: WechatArticle[] = []; // 将变量定义移到try块外部
 
     const aiServiceStatus = checkAIServiceAvailability();
 
@@ -101,7 +102,7 @@ export class AnalysisOrchestrator {
         const articleMap = new Map<string, WechatArticle>()
         topLikedArticles.forEach(article => articleMap.set(article.title, article))
         topInteractionArticles.forEach(article => articleMap.set(article.title, article))
-        const allTopArticles = Array.from(articleMap.values()).slice(0, 10); // 最多10篇
+        allTopArticles = Array.from(articleMap.values()).slice(0, 10); // 最多10篇
 
         // 步骤4.2: TOP文章深度分析
         if (allTopArticles.length > 0) {

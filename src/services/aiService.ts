@@ -44,11 +44,11 @@ function safeJsonParse(jsonString: string): any {
   }
 }
 
-// 重试机制
+// 重试机制 - 优化重试策略
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  delay: number = 1000
+  maxRetries: number = 2,
+  delay: number = 2000
 ): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -56,9 +56,19 @@ async function retryWithBackoff<T>(
     } catch (error: any) {
       if (i === maxRetries - 1) throw error;
 
-      // 指数退避
-      const waitTime = delay * Math.pow(2, i);
-      console.log(`AI服务调用失败，${waitTime}ms后重试 (${i + 1}/${maxRetries})`);
+      // 对于网络错误或4xx错误，不重试
+      if (error instanceof AIServiceError && (
+        error.message.includes('网络连接失败') ||
+        error.message.includes('API密钥无效') ||
+        error.statusCode === 401 ||
+        error.statusCode === 400
+      )) {
+        throw error;
+      }
+
+      // 指数退避，但基础延迟更长
+      const waitTime = delay * Math.pow(2, i) + Math.random() * 1000; // 添加随机延迟
+      console.log(`⏳ AI服务调用失败，${Math.round(waitTime)}ms后重试 (${i + 1}/${maxRetries}) - ${error.message}`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
@@ -72,6 +82,12 @@ export async function callOpenAIWithMessages(messages: Array<{ role: string; con
     throw new AIServiceError('请配置OPENAI_API_KEY环境变量');
   }
 
+  console.log('🌐 开始AI API调用:', {
+    baseURL: AI_CONFIG.baseURL,
+    model: AI_CONFIG.model,
+    messageCount: messages.length
+  });
+
   try {
     const response = await fetch(`${AI_CONFIG.baseURL}/chat/completions`, {
       method: 'POST',
@@ -79,18 +95,34 @@ export async function callOpenAIWithMessages(messages: Array<{ role: string; con
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${AI_CONFIG.apiKey}`,
         'HTTP-Referer': 'https://localhost:3000',
-        'X-Title': 'Content Factory AI Analysis'
+        'X-Title': 'Content Factory AI Analysis',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
       body: JSON.stringify({
         model: AI_CONFIG.model,
         messages,
         temperature: AI_CONFIG.temperature,
         max_tokens: AI_CONFIG.maxTokens
-      })
+      }),
+      // 添加超时控制
+      signal: AbortSignal.timeout(60000) // 60秒超时
     });
+
+    console.log('📡 AI API响应状态:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('❌ AI API错误响应:', errorData);
+
+      // 特殊错误处理
+      if (response.status === 429) {
+        throw new AIServiceError('API调用频率过高，请稍后重试', 429);
+      } else if (response.status === 401) {
+        throw new AIServiceError('API密钥无效或已过期', 401);
+      } else if (response.status >= 500) {
+        throw new AIServiceError('AI服务暂时不可用，已切换到备用分析模式', response.status);
+      }
+
       throw new AIServiceError(
         errorData.error?.message || `API调用失败: ${response.statusText}`,
         response.status
@@ -98,11 +130,37 @@ export async function callOpenAIWithMessages(messages: Array<{ role: string; con
     }
 
     const data: OpenAIResponse = await response.json();
+    console.log('✅ AI API调用成功:', {
+      id: data.id,
+      model: data.model,
+      usage: data.usage
+    });
+
     return data;
   } catch (error) {
+    console.error('🚨 AI API调用异常:', {
+      error: error instanceof Error ? error.message : error,
+      name: error instanceof Error ? error.name : 'Unknown',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     if (error instanceof AIServiceError) {
       throw error;
     }
+
+    // 网络错误特殊处理
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new AIServiceError('AI服务响应超时，已切换到备用分析模式');
+    }
+
+    if (error instanceof Error && (
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('ERR_CONNECTION') ||
+      error.message.includes('NetworkError')
+    )) {
+      throw new AIServiceError('网络连接失败，已切换到备用分析模式');
+    }
+
     throw new AIServiceError(`OpenAI API调用失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
