@@ -219,16 +219,21 @@ export default function SettingsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor={`${provider.key}-api-key`}
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         API密钥
                       </label>
                       <div className="relative">
                         <input
+                          id={`${provider.key}-api-key`}
                           type={showApiKeys[provider.key] ? 'text' : 'password'}
                           value={apiConfig[`${provider.key}ApiKey`]}
                           onChange={(e) => handleInputChange(`${provider.key}ApiKey`, e.target.value)}
                           className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                           placeholder={`输入${provider.provider} API密钥`}
+                          title={`${provider.provider} API密钥，用于身份验证`}
                         />
                         <button
                           type="button"
@@ -245,13 +250,18 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor={`${provider.key}-model`}
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         模型选择
                       </label>
                       <select
+                        id={`${provider.key}-model`}
                         value={apiConfig[`${provider.key}Model`]}
                         onChange={(e) => handleInputChange(`${provider.key}Model`, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        title={`选择${provider.provider}的AI模型`}
                       >
                         {provider.models.map((model) => (
                           <option key={model.id} value={model.id}>
@@ -262,15 +272,20 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor={`${provider.key}-base-url`}
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         API基础URL
                       </label>
                       <input
+                        id={`${provider.key}-base-url`}
                         type="url"
                         value={apiConfig[`${provider.key}BaseUrl`]}
                         onChange={(e) => handleInputChange(`${provider.key}BaseUrl`, e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="输入API基础URL"
+                        title={`${provider.provider}的API基础URL地址`}
                       />
                     </div>
                   </div>

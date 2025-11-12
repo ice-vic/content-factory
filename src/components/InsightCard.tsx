@@ -316,7 +316,8 @@ interface InsightListProps {
 }
 
 export function InsightList({ insights, title, compact = false, maxItems }: InsightListProps) {
-  const displayInsights = maxItems ? insights.slice(0, maxItems) : insights;
+  const [showAll, setShowAll] = React.useState(false);
+  const displayInsights = (maxItems && !showAll) ? insights.slice(0, maxItems) : insights;
 
   if (insights.length === 0) {
     return (
@@ -354,8 +355,11 @@ export function InsightList({ insights, title, compact = false, maxItems }: Insi
 
       {maxItems && insights.length > maxItems && (
         <div className="text-center">
-          <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-            查看更多 {insights.length - maxItems} 条洞察
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+          >
+            {showAll ? '收起洞察' : `查看更多 ${insights.length - maxItems} 条洞察`}
           </button>
         </div>
       )}

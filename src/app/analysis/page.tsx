@@ -777,7 +777,7 @@ export default function AnalysisPage() {
                         <InsightList
                           insights={completeAnalysisResult.aiInsights}
                           title={`🤖 AI深度洞察 (${completeAnalysisResult.aiInsights.length}条)`}
-                          maxItems={5}
+                          maxItems={7}
                         />
                       </div>
                     )}
