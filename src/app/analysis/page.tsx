@@ -76,6 +76,100 @@ export default function AnalysisPage() {
       }
     }
 
+    // 检查是否从历史记录页面跳转过来
+    const urlParams = new URLSearchParams(window.location.search)
+    const historyId = urlParams.get('historyId')
+
+    if (historyId) {
+      // 从历史记录加载数据
+      const loadHistoryData = async () => {
+        try {
+          console.log('🔄 从历史记录加载数据:', historyId)
+          const response = await fetch(`/api/history/${historyId}`)
+          const result = await response.json()
+
+          if (result.success && result.data) {
+            const historyData = result.data
+            console.log('📊 历史数据:', {
+              hasKeyword: !!historyData.keyword,
+              hasArticles: !!(historyData.analysisResult?.allArticles?.length),
+              articleCount: historyData.analysisResult?.allArticles?.length || 0,
+              hasStructuredInsights: !!(historyData.analysisResult?.structuredTopicInsights?.length),
+              insightsCount: historyData.analysisResult?.structuredTopicInsights?.length || 0
+            })
+
+            // 设置页面状态
+            setKeyword(historyData.keyword || '')
+            setArticles(historyData.analysisResult?.allArticles || [])
+            setShowResults(true)
+
+            // 构建完整分析结果对象
+            if (historyData.analysisResult) {
+              const completeResult: CompleteAnalysisResult = {
+                keyword: historyData.keyword || '',
+                totalArticles: historyData.articleCount || 0,
+                processedArticles: historyData.articleCount || 0,
+
+                // 基础统计
+                basicStats: {
+                  avgRead: historyData.avgRead || 0,
+                  avgLike: historyData.avgLike || 0,
+                  originalRate: historyData.originalRate || 0,
+                  avgInteraction: 0 // 可以计算得出
+                },
+
+                // 词云数据
+                wordCloud: historyData.analysisResult.wordCloud || [],
+
+                // TOP文章AI分析结果
+                topArticleInsights: [], // 可以从aiSummaries转换
+
+                // 结构化选题洞察
+                structuredTopicInsights: historyData.analysisResult.structuredTopicInsights || [],
+
+                // AI分析结果（保持向后兼容）
+                aiSummaries: historyData.analysisResult.aiSummaries || [],
+                structuredInfo: historyData.analysisResult.structuredInfo || {
+                  trendingTopics: [],
+                  contentGaps: [],
+                  popularFormats: [],
+                  engagementPatterns: []
+                },
+                aiInsights: historyData.analysisResult.aiInsights || [],
+
+                // 规则分析结果
+                ruleInsights: historyData.analysisResult.insights || [],
+
+                // 元数据
+                metadata: historyData.analysisResult.metadata || {
+                  modelUsed: 'rule-based',
+                  processingTime: 0,
+                  analysisVersion: 'unknown',
+                  timestamp: historyData.analysisResult.createdAt || new Date()
+                }
+              }
+
+              console.log('✅ 构建的完整分析结果:', {
+                hasStructuredTopicInsights: !!completeResult.structuredTopicInsights.length,
+                insightsCount: completeResult.structuredTopicInsights.length,
+                modelUsed: completeResult.metadata.modelUsed
+              })
+
+              setCompleteAnalysisResult(completeResult)
+            }
+          } else {
+            console.error('❌ 加载历史记录失败:', result.error)
+            setError(result.error || '加载历史记录失败')
+          }
+        } catch (error) {
+          console.error('❌ 加载历史记录异常:', error)
+          setError('加载历史记录时发生错误')
+        }
+      }
+
+      loadHistoryData()
+    }
+
     setIsClient(true)
     fetchAIStatus()
   }, [])

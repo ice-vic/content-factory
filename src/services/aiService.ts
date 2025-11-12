@@ -1,11 +1,11 @@
 import { OpenAIResponse, ArticleSummary, TopArticleInsight, StructuredTopicInsight } from '@/types';
 import { WechatArticle } from './wechatService';
 
-// AI配置 - 强制使用OpenRouter配置进行测试
+// AI配置 - 使用环境变量
 const AI_CONFIG = {
-  apiKey: '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',
-  baseURL: 'https://openrouter.ai/api/v1',
-  model: 'openai/gpt-4o-mini',
+  apiKey: process.env.OPENAI_API_KEY || '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',
+  baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
+  model: process.env.OPENAI_MODEL || 'openai/gpt-4o-mini',
   temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7'),
   maxTokens: parseInt(process.env.AI_MAX_TOKENS || '4000'),
   batchSize: parseInt(process.env.AI_BATCH_SIZE || '3')
@@ -67,7 +67,7 @@ async function retryWithBackoff<T>(
 }
 
 // 调用OpenAI API（支持消息数组，返回OpenAIResponse）
-async function callOpenAIWithMessages(messages: Array<{ role: string; content: string }>): Promise<OpenAIResponse> {
+export async function callOpenAIWithMessages(messages: Array<{ role: string; content: string }>): Promise<OpenAIResponse> {
   if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey === 'your_openai_api_key_here') {
     throw new AIServiceError('请配置OPENAI_API_KEY环境变量');
   }
@@ -347,27 +347,66 @@ export async function generateAIInsights(structuredInfo: any): Promise<any[]> {
   }
 }
 
-// 检查AI服务是否可用 - 强制启用OpenRouter配置进行测试
+// 检查AI服务是否可用
 export function checkAIServiceAvailability(): {
   available: boolean;
   error?: string;
   configured: boolean;
 } {
-  // 强制使用OpenRouter配置进行测试
-  const TEST_CONFIG = {
-    apiKey: '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',
-    baseURL: 'https://openrouter.ai/api/v1',
-    model: 'openai/gpt-4o-mini'
-  };
+  // 使用当前配置
+  const apiKey = AI_CONFIG.apiKey;
+  const baseURL = AI_CONFIG.baseURL;
+  const model = AI_CONFIG.model;
 
-  console.log('🔍 强制使用OpenRouter配置进行测试:', {
-    apiKeyLength: TEST_CONFIG.apiKey.length,
-    baseURL: TEST_CONFIG.baseURL,
-    model: TEST_CONFIG.model
+  console.log('🔍 检查AI服务配置:', {
+    apiKeyLength: apiKey ? apiKey.length : 0,
+    baseURL: baseURL,
+    model: model,
+    hasApiKey: !!apiKey
   });
 
-  // 强制返回可用状态进行测试
-  console.log('✅ 强制启用AI服务进行测试');
+  // 检查必要配置
+  if (!apiKey || apiKey === 'your_openai_api_key_here' || !apiKey.startsWith('sk-')) {
+    console.log('❌ AI服务不可用：API密钥未配置或格式错误');
+    return {
+      available: false,
+      error: 'API密钥未配置或格式错误',
+      configured: false
+    };
+  }
+
+  if (!baseURL) {
+    console.log('❌ AI服务不可用：Base URL未配置');
+    return {
+      available: false,
+      error: 'Base URL未配置',
+      configured: false
+    };
+  }
+
+  if (!model) {
+    console.log('❌ AI服务不可用：模型未配置');
+    return {
+      available: false,
+      error: '模型未配置',
+      configured: false
+    };
+  }
+
+  // 检查AI分析是否启用 - 在客户端中检查NEXT_PUBLIC_开头的变量或默认启用
+  const aiAnalysisEnabled = process.env.AI_ANALYSIS_ENABLED === 'true' ||
+                           process.env.NEXT_PUBLIC_AI_ANALYSIS_ENABLED === 'true' ||
+                           process.env.AI_ANALYSIS_ENABLED !== 'false'; // 默认启用
+  if (!aiAnalysisEnabled) {
+    console.log('❌ AI服务不可用：AI分析功能已禁用');
+    return {
+      available: false,
+      error: 'AI分析功能已禁用',
+      configured: true
+    };
+  }
+
+  console.log('✅ AI服务配置正常');
   return { available: true, configured: true };
 }
 

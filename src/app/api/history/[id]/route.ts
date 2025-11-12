@@ -50,6 +50,19 @@ export async function GET(
         topLikedArticles: JSON.parse(history.analysisResult.topLikedArticles),
         topInteractionArticles: JSON.parse(history.analysisResult.topInteractionArticles),
         allArticles: JSON.parse(history.analysisResult.allArticles),
+        // AI分析相关字段
+        aiSummaries: history.analysisResult.aiSummaries ? JSON.parse(history.analysisResult.aiSummaries) : null,
+        structuredInfo: history.analysisResult.structuredInfo ? JSON.parse(history.analysisResult.structuredInfo) : null,
+        aiInsights: history.analysisResult.aiInsights ? JSON.parse(history.analysisResult.aiInsights) : null,
+        // AI结构化洞察 - 这是最重要的字段
+        structuredTopicInsights: history.analysisResult.aiGeneratedInsights ? JSON.parse(history.analysisResult.aiGeneratedInsights) : null,
+        // 元数据
+        metadata: {
+          analysisVersion: history.analysisResult.analysisVersion,
+          modelUsed: history.analysisResult.aiModelUsed,
+          processingTime: history.analysisResult.processingTime,
+          timestamp: history.analysisResult.createdAt
+        },
         createdAt: history.analysisResult.createdAt
       } : null
     }
