@@ -255,11 +255,11 @@ export default function HistoryPage() {
                   <div className="flex items-center space-x-2">
                     {history.hasAnalysisResult && (
                       <Link
-                        href={`/history/${history.id}`}
+                        href={`/analysis?historyId=${history.id}`}
                         className="btn btn-secondary flex items-center space-x-2 text-sm"
                       >
                         <EyeIcon className="w-4 h-4" />
-                        <span>查看</span>
+                        <span>查看分析</span>
                       </Link>
                     )}
                     <button

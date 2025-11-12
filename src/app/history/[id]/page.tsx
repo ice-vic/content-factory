@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import ArticleList from '@/components/ArticleList'
+import { StructuredTopicInsights } from '@/components/StructuredTopicInsights'
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -18,7 +19,8 @@ import {
   AlertCircleIcon,
   TrendingUpIcon,
   RefreshCwIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  BrainIcon
 } from 'lucide-react'
 
 interface WechatArticle {
@@ -59,6 +61,36 @@ interface HistoryDetail {
     topLikedArticles: WechatArticle[]
     topInteractionArticles: WechatArticle[]
     allArticles: WechatArticle[]
+    // AI分析相关字段
+    aiSummaries?: any[]
+    structuredInfo?: any
+    aiInsights?: any[]
+    // AI结构化洞察 - 这是最重要的字段
+    structuredTopicInsights?: Array<{
+      title: string
+      coreFinding: string
+      dataSupport: {
+        avgRead: number
+        avgLike: number
+        likeRate: number
+        sampleSize: number
+      }
+      keywordAnalysis: {
+        highFrequency: string[]
+        opportunity: string[]
+      }
+      recommendedTopics: string[]
+      contentStrategy: string[]
+      targetAudience: string
+      confidenceScore: number
+    }>
+    // 元数据
+    metadata?: {
+      analysisVersion: string
+      modelUsed: string
+      processingTime: number
+      timestamp: string
+    }
     createdAt: string
   }
 }
@@ -286,6 +318,27 @@ export default function HistoryDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* AI结构化选题洞察 */}
+            {history.analysisResult.structuredTopicInsights && history.analysisResult.structuredTopicInsights.length > 0 && (
+              <div className="card p-6 mb-8">
+                <div className="flex items-center space-x-2 mb-6">
+                  <BrainIcon className="w-6 h-6 text-purple-600" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    AI结构化选题洞察 ({history.analysisResult.structuredTopicInsights.length}条)
+                  </h3>
+                  {history.analysisResult.metadata?.modelUsed && (
+                    <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                      AI模型: {history.analysisResult.metadata.modelUsed}
+                    </span>
+                  )}
+                </div>
+                <StructuredTopicInsights
+                  insights={history.analysisResult.structuredTopicInsights}
+                  maxItems={10}
+                />
+              </div>
+            )}
 
             {/* 所有文章列表 */}
             <div className="card p-6 mb-8">
