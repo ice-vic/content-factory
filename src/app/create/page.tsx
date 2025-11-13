@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Navigation from '@/components/Navigation'
+import InsightSelector from '@/components/InsightSelector'
+import KeywordInsightViewer from '@/components/KeywordInsightViewer'
 import {
   PenToolIcon,
   Wand2Icon,
@@ -14,11 +16,15 @@ import {
   SaveIcon,
   DownloadIcon,
   CheckIcon,
-  XIcon
+  XIcon,
+  SparklesIcon
 } from 'lucide-react'
+import { generateArticle, recommendParameters } from '@/services/contentService'
 
 export default function CreatePage() {
-  const [selectedInsight, setSelectedInsight] = useState('')
+  const [selectedInsightId, setSelectedInsightId] = useState('')
+  const [selectedInsightDetail, setSelectedInsightDetail] = useState<any>(null)
+  const [selectedInsight, setSelectedInsight] = useState<any>(null)
   const [customTopic, setCustomTopic] = useState('')
   const [articleStyle, setArticleStyle] = useState<'professional' | 'casual' | 'humorous'>('professional')
   const [articleLength, setArticleLength] = useState<'short' | 'medium' | 'long'>('medium')
@@ -26,22 +32,17 @@ export default function CreatePage() {
     wechat: true,
     xiaohongshu: true
   })
+  const [customInstructions, setCustomInstructions] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [creationStep, setCreationStep] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const [generatedArticle, setGeneratedArticle] = useState({
     title: '',
     content: '',
-    images: ['https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=800&h=400&fit=crop']
+    sections: [],
+    estimatedReadingTime: 0
   })
-
-  const insightOptions = [
-    'AI相关话题持续升温，尤其是应用层面',
-    '实用性内容比理论性内容更受欢迎',
-    '带有具体案例和数据支撑的文章互动率更高',
-    '创业者和中小企业主是主要受众群体',
-    '工具推荐和操作指南类内容需求旺盛'
-  ]
+  const [errorMessage, setErrorMessage] = useState('')
 
   const styleOptions = [
     { value: 'professional', label: '专业严谨', desc: '适合正式场合，内容严谨专业' },
@@ -56,10 +57,44 @@ export default function CreatePage() {
   ]
 
   const creationSteps = [
-    { phase: 'outline', message: '正在生成文章大纲...', duration: 2000 },
-    { phase: 'content', message: '正在撰写文章内容...', duration: 5000 },
-    { phase: 'images', message: '正在获取配图...', duration: 3000 }
+    { phase: 'analyzing', message: '正在分析创作要求...', duration: 1000 },
+    { phase: 'outline', message: '正在生成文章大纲...', duration: 3000 },
+    { phase: 'content', message: '正在撰写文章内容...', duration: 8000 },
+    { phase: 'formatting', message: '正在格式化文章...', duration: 2000 }
   ]
+
+  // 洞察选择处理
+  const handleInsightSelect = useCallback(async (insightId: string, insightDetail?: any) => {
+    setSelectedInsightId(insightId)
+    setSelectedInsightDetail(insightDetail)
+
+    if (insightDetail && insightDetail.structuredTopicInsights?.length > 0) {
+      // 默认选择第一个洞察
+      setSelectedInsight(insightDetail.structuredTopicInsights[0])
+
+      // 基于洞察推荐创作参数
+      const recommendations = recommendParameters(insightDetail.structuredTopicInsights[0])
+
+      if (recommendations.style) setArticleStyle(recommendations.style)
+      if (recommendations.length) setArticleLength(recommendations.length)
+      if (recommendations.platforms) setTargetPlatforms(recommendations.platforms)
+    } else {
+      setSelectedInsight(null)
+    }
+
+    setErrorMessage('')
+  }, [])
+
+  // 具体洞察选择处理
+  const handleSpecificInsightSelect = useCallback((insight: any) => {
+    setSelectedInsight(insight)
+
+    // 基于选中的具体洞察重新推荐参数
+    const recommendations = recommendParameters(insight)
+    if (recommendations.style) setArticleStyle(recommendations.style)
+    if (recommendations.length) setArticleLength(recommendations.length)
+    if (recommendations.platforms) setTargetPlatforms(recommendations.platforms)
+  }, [])
 
   const mockArticle = {
     title: '2024年AI创业必备的5个工具推荐',
@@ -106,20 +141,55 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
   }
 
   const handleStartCreation = async () => {
-    if (!selectedInsight && !customTopic.trim()) return
+    if (!selectedInsight && !customTopic.trim()) {
+      setErrorMessage('请选择洞察报告或输入自定义主题')
+      return
+    }
 
     setIsCreating(true)
     setCreationStep(0)
     setShowPreview(false)
+    setErrorMessage('')
 
-    for (let i = 0; i < creationSteps.length; i++) {
-      setCreationStep(i)
-      await new Promise(resolve => setTimeout(resolve, creationSteps[i].duration))
+    try {
+      // 确定创作主题
+      const topic = selectedInsight?.recommendedTopics?.[0] || customTopic.trim()
+
+      // 构建生成参数
+      const parameters = {
+        style: articleStyle,
+        length: articleLength,
+        platforms: targetPlatforms,
+        customInstructions: customInstructions.trim() || undefined
+      }
+
+      // 逐步执行创作流程
+      for (let i = 0; i < creationSteps.length; i++) {
+        setCreationStep(i)
+
+        if (i === creationSteps.length - 1) {
+          // 最后一步执行实际的AI生成
+          const result = await generateArticle(topic, selectedInsight, parameters)
+
+          if (result.success && result.article) {
+            setGeneratedArticle(result.article)
+          } else {
+            throw new Error(result.error || '文章生成失败')
+          }
+          break
+        }
+
+        // 模拟前面步骤的等待时间
+        await new Promise(resolve => setTimeout(resolve, creationSteps[i].duration))
+      }
+
+      setShowPreview(true)
+    } catch (error) {
+      console.error('文章生成失败:', error)
+      setErrorMessage(error instanceof Error ? error.message : '文章生成失败，请重试')
+    } finally {
+      setIsCreating(false)
     }
-
-    setGeneratedArticle(mockArticle)
-    setIsCreating(false)
-    setShowPreview(true)
   }
 
   const handleSaveToPublish = () => {
@@ -144,59 +214,51 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* 左侧：创作参数设置 */}
+          {/* 左侧：洞察选择和创作参数设置 */}
           <div className="lg:col-span-1 space-y-6">
-            {/* 选题选择 */}
+            {/* 洞察选择 */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                 <Wand2Icon className="w-5 h-5 text-primary-600" />
-                <span>选题选择</span>
+                <span>洞察报告选择</span>
               </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="insight-select"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    基于洞察点
-                  </label>
-                  <select
-                    id="insight-select"
-                    value={selectedInsight}
-                    onChange={(e) => setSelectedInsight(e.target.value)}
-                    className="input w-full"
-                    title="选择分析结果中的洞察点作为内容创作基础"
-                  >
-                    <option value="">选择洞察点...</option>
-                    {insightOptions.map((option, index) => (
-                      <option key={index} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <InsightSelector
+                selectedInsight={selectedInsightId}
+                onInsightSelect={handleInsightSelect}
+                disabled={isCreating}
+              />
 
-                <div className="text-center text-gray-400 text-sm">或</div>
+              <div className="text-center text-gray-400 text-sm my-4">或</div>
 
-                <div>
-                  <label
-                    htmlFor="custom-topic"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    自定义主题
-                  </label>
-                  <input
-                    id="custom-topic"
-                    type="text"
-                    value={customTopic}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder="输入自定义主题..."
-                    className="input w-full"
-                    title="输入自定义主题进行内容创作"
-                  />
-                </div>
+              <div>
+                <label
+                  htmlFor="custom-topic"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  自定义主题
+                </label>
+                <input
+                  id="custom-topic"
+                  type="text"
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  placeholder="输入自定义主题..."
+                  className="input w-full"
+                  title="输入自定义主题进行内容创作"
+                  disabled={isCreating}
+                />
               </div>
+
+              {/* 智能推荐提示 */}
+              {selectedInsight && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2 text-blue-800">
+                    <SparklesIcon className="w-4 h-4" />
+                    <span className="text-sm font-medium">已根据选中的洞察智能推荐创作参数</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* AI创作参数 */}
@@ -295,6 +357,31 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
               </div>
             </div>
 
+            {/* 自定义说明 */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                <Edit3Icon className="w-5 h-5 text-primary-600" />
+                <span>自定义说明</span>
+              </h3>
+              <textarea
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="输入额外的创作要求，比如：需要包含具体案例、面向特定行业等..."
+                className="input w-full h-24 resize-none"
+                disabled={isCreating}
+              />
+            </div>
+
+            {/* 错误提示 */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-red-800">
+                  <XIcon className="w-4 h-4" />
+                  <span className="text-sm">{errorMessage}</span>
+                </div>
+              </div>
+            )}
+
             {/* 开始创作按钮 */}
             <button
               onClick={handleStartCreation}
@@ -315,12 +402,27 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
             </button>
           </div>
 
-          {/* 右侧：创作进度和预览 */}
-          <div className="lg:col-span-2">
+          {/* 右侧：关键词洞察和创作进度预览 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 关键词洞察查看器 */}
+            {selectedInsightDetail && !showPreview && (
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                  <Wand2Icon className="w-5 h-5 text-primary-600" />
+                  <span>选题洞察分析</span>
+                </h3>
+                <KeywordInsightViewer
+                  insightDetail={selectedInsightDetail}
+                  selectedInsightId={selectedInsightId}
+                  onInsightSelect={handleSpecificInsightSelect}
+                />
+              </div>
+            )}
+
             {/* 创作进度 */}
             {isCreating && (
-              <div className="card p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">创作进度</h3>
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">AI创作进度</h3>
                 <div className="space-y-4">
                   {creationSteps.map((step, index) => (
                     <div
@@ -363,7 +465,10 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 <div className="p-6 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-900">文章预览</h3>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-sm text-gray-500">
+                        预计阅读时间: {generatedArticle.estimatedReadingTime}分钟
+                      </div>
                       <button
                         onClick={() => setShowPreview(false)}
                         className="btn btn-secondary"
@@ -388,14 +493,31 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                     />
                   </div>
 
+                  {/* 文章目录（如果有章节） */}
+                  {generatedArticle.sections && generatedArticle.sections.length > 0 && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">文章目录</h4>
+                      <div className="space-y-1">
+                        {generatedArticle.sections.map((section, index) => (
+                          <div key={index} className="text-sm text-gray-600">
+                            {index + 1}. {section}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* 文章内容 */}
                   <div className="prose max-w-none">
                     {generatedArticle.content.split('\n').map((paragraph, index) => {
                       if (paragraph.startsWith('#')) {
+                        const level = paragraph.match(/^#+/)?.[0].length || 1
+                        const text = paragraph.replace(/^#+\s*/, '').trim()
+                        const HeadingTag = `h${Math.min(level + 1, 6)}` as keyof JSX.IntrinsicElements
                         return (
-                          <h2 key={index} className="text-xl font-semibold text-gray-900 mt-6 mb-3">
-                            {paragraph.replace('#', '').trim()}
-                          </h2>
+                          <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
+                            {text}
+                          </HeadingTag>
                         )
                       }
                       if (paragraph.includes('![')) {
@@ -409,6 +531,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                                 alt={altText}
                                 className="w-full rounded-lg shadow-sm"
                               />
+                              <p className="text-sm text-gray-500 mt-2 text-center">{altText}</p>
                             </div>
                           )
                         }
@@ -458,19 +581,20 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
             )}
 
             {/* 初始状态提示 */}
-            {!isCreating && !showPreview && (
+            {!isCreating && !showPreview && !selectedInsightDetail && (
               <div className="card p-12 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                   <PenToolIcon className="w-8 h-8 text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">开始创作您的第一篇文章</h3>
                 <p className="text-gray-500 mb-6">
-                  选择选题洞察或输入自定义主题，设置创作参数，点击"开始创作"即可
+                  选择洞察报告或输入自定义主题，设置创作参数，点击"开始创作"即可
                 </p>
                 <div className="text-sm text-gray-400">
-                  <p>✨ AI将自动生成文章大纲和内容</p>
-                  <p>🖼️ 自动插入相关图片</p>
-                  <p>⚡ 支持多种风格和长度</p>
+                  <p>🎯 基于12小时内的洞察报告智能创作</p>
+                  <p>🔍 实时查看关键词分析和选题洞察</p>
+                  <p>✨ AI自动推荐最佳创作参数</p>
+                  <p>⚡ 支持多种风格和平台适配</p>
                 </div>
               </div>
             )}
