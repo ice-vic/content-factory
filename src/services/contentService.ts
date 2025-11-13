@@ -38,6 +38,12 @@ export interface GenerationParameters {
     xiaohongshu: boolean;
   };
   customInstructions?: string;
+  // 配图功能参数
+  enableImages?: boolean;
+  imageDensity?: 'sparse' | 'medium' | 'dense';
+  imageStyle?: 'business' | 'lifestyle' | 'illustration' | 'data-viz' | 'photorealistic';
+  imagePosition?: 'after-paragraph' | 'after-section' | 'mixed';
+  maxImages?: number;
 }
 
 export interface GeneratedArticle {
@@ -45,6 +51,20 @@ export interface GeneratedArticle {
   content: string;
   sections: string[];
   estimatedReadingTime: number;
+  // 配图相关字段
+  hasImages?: boolean;
+  imageCount?: number;
+  imagePlaceholders?: Array<{
+    id: string;
+    description: string;
+    position: number;
+  }>;
+  generatedImages?: Array<{
+    id: string;
+    url: string;
+    description: string;
+    style: string;
+  }>;
 }
 
 // 获取12小时内的历史洞察

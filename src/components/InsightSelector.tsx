@@ -122,9 +122,9 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
             title="选择基于分析生成的洞察报告作为创作参考"
           >
             <option value="">选择洞察报告...</option>
-            {insights.map((insight) => (
+            {insights.filter(insight => insight.structuredTopicInsightsCount > 0).map((insight) => (
               <option key={insight.id} value={insight.id}>
-                {insight.keyword} ({formatTime(insight.createdAt)})
+                {insight.keyword} ({formatTime(insight.createdAt)}) - {insight.structuredTopicInsightsCount}个洞察
               </option>
             ))}
           </select>
@@ -210,16 +210,16 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
       )}
 
       {/* 空状态 */}
-      {!loading && insights.length === 0 && (
+      {!loading && insights.filter(insight => insight.structuredTopicInsightsCount > 0).length === 0 && (
         <div className="text-center py-4 text-gray-500">
           <Wand2Icon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-          <p className="text-sm">12小时内暂无洞察历史</p>
+          <p className="text-sm">12小时内暂无可用的洞察历史</p>
           <p className="text-xs mt-1">请先在选题分析页面生成洞察报告</p>
         </div>
       )}
 
       {/* 刷新按钮 */}
-      {!loading && insights.length > 0 && (
+      {!loading && insights.filter(insight => insight.structuredTopicInsightsCount > 0).length > 0 && (
         <div className="text-center">
           <button
             onClick={loadInsightHistory}

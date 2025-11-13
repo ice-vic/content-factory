@@ -17,7 +17,9 @@ import {
   DownloadIcon,
   CheckIcon,
   XIcon,
-  SparklesIcon
+  SparklesIcon,
+  CameraIcon,
+  LayersIcon
 } from 'lucide-react'
 import { generateArticle, recommendParameters } from '@/services/contentService'
 
@@ -33,6 +35,14 @@ export default function CreatePage() {
     xiaohongshu: true
   })
   const [customInstructions, setCustomInstructions] = useState('')
+
+  // 配图功能状态
+  const [enableImages, setEnableImages] = useState(false)
+  const [imageDensity, setImageDensity] = useState<'sparse' | 'medium' | 'dense'>('medium')
+  const [imageStyle, setImageStyle] = useState<'business' | 'lifestyle' | 'illustration' | 'data-viz' | 'photorealistic'>('photorealistic')
+  const [imagePosition, setImagePosition] = useState<'after-paragraph' | 'after-section' | 'mixed'>('after-paragraph')
+  const [maxImages, setMaxImages] = useState(5)
+
   const [isCreating, setIsCreating] = useState(false)
   const [creationStep, setCreationStep] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
@@ -41,6 +51,9 @@ export default function CreatePage() {
     content: string;
     sections: string[];
     estimatedReadingTime: number;
+    hasImages?: boolean;
+    imageCount?: number;
+    imageGenerationSummary?: any;
   }>({
     title: '',
     content: '',
@@ -165,7 +178,13 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
         style: articleStyle,
         length: articleLength,
         platforms: targetPlatforms,
-        customInstructions: customInstructions.trim() || undefined
+        customInstructions: customInstructions.trim() || undefined,
+        // 配图参数
+        enableImages,
+        imageDensity,
+        imageStyle,
+        imagePosition,
+        maxImages: enableImages ? maxImages : 0
       }
 
       // 逐步执行创作流程
@@ -365,6 +384,92 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                       <span>小红书</span>
                     </label>
                   </div>
+                </div>
+
+                {/* 配图功能 */}
+                <div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <CameraIcon className="w-4 h-4 text-gray-500" />
+                    <input
+                      type="checkbox"
+                      id="enableImages"
+                      checked={enableImages}
+                      onChange={(e) => setEnableImages(e.target.checked)}
+                      className="text-primary-600"
+                    />
+                    <label htmlFor="enableImages" className="text-sm font-medium text-gray-700">
+                      启用自动配图
+                    </label>
+                  </div>
+
+                  {enableImages && (
+                    <div className="space-y-3 pl-6 border-l-2 border-gray-200">
+                      {/* 配图密度 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          配图密度
+                        </label>
+                        <select
+                          value={imageDensity}
+                          onChange={(e) => setImageDensity(e.target.value as any)}
+                          className="input text-sm"
+                        >
+                          <option value="sparse">稀疏 (1-2张)</option>
+                          <option value="medium">适中 (3-5张)</option>
+                          <option value="dense">密集 (6-8张)</option>
+                        </select>
+                      </div>
+
+                      {/* 图片风格 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          图片风格
+                        </label>
+                        <select
+                          value={imageStyle}
+                          onChange={(e) => setImageStyle(e.target.value as any)}
+                          className="input text-sm"
+                        >
+                          <option value="photorealistic">真实照片</option>
+                          <option value="business">商务风格</option>
+                          <option value="lifestyle">生活化场景</option>
+                          <option value="illustration">插画风格</option>
+                          <option value="data-viz">信息图表</option>
+                        </select>
+                      </div>
+
+                      {/* 配图位置 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          配图位置
+                        </label>
+                        <select
+                          value={imagePosition}
+                          onChange={(e) => setImagePosition(e.target.value as any)}
+                          className="input text-sm"
+                        >
+                          <option value="after-paragraph">段落后</option>
+                          <option value="after-section">章节后</option>
+                          <option value="mixed">混合布局</option>
+                        </select>
+                      </div>
+
+                      {/* 最大图片数量 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          最大图片数量
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={maxImages}
+                          onChange={(e) => setMaxImages(parseInt(e.target.value) || 5)}
+                          className="input text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
