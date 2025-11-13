@@ -348,7 +348,28 @@ export default function HistoryDetailPage() {
                   )}
                 </div>
                 <StructuredTopicInsights
-                  insights={history.analysisResult.structuredTopicInsights}
+                  insights={history.analysisResult.structuredTopicInsights?.map((insight, index) => ({
+                    id: `history_insight_${index}`,
+                    title: insight.title,
+                    coreFinding: insight.coreFinding,
+                    difficulty: 'medium' as const,
+                    confidence: insight.confidenceScore / 100 || 0.8,
+                    recommendedTopics: [],
+                    keywordAnalysis: {
+                      highFrequency: insight.keywordAnalysis?.highFrequency || [],
+                      missingKeywords: insight.keywordAnalysis?.opportunity || []
+                    },
+                    contentStrategy: insight.contentStrategy || [],
+                    targetAudience: typeof insight.targetAudience === 'string' ? [insight.targetAudience] : [],
+                    dataSupport: insight.dataSupport ? [
+                    { metric: "平均阅读量", value: String(insight.dataSupport.avgRead), description: "文章平均阅读次数" },
+                    { metric: "平均点赞数", value: String(insight.dataSupport.avgLike), description: "文章平均点赞次数" },
+                    { metric: "点赞率", value: `${insight.dataSupport.likeRate}%`, description: "点赞率统计" },
+                    { metric: "样本数量", value: String(insight.dataSupport.sampleSize), description: "分析文章数量" }
+                  ] : [],
+                    estimatedImpact: '',
+                    relatedArticles: []
+                  })) || []}
                   maxItems={10}
                 />
               </div>

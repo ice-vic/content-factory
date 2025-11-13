@@ -260,12 +260,15 @@ export default function AnalysisPage() {
           originalRate: analysisResult.basicStats.originalRate,
           articles: allArticles,
           wordCloud: analysisResult.wordCloud,
-          topLikedArticles: analysisResult.topArticleInsights?.map(insight => insight.article) || [],
+          topLikedArticles: analysisResult.topArticleInsights?.map(insight =>
+            allArticles.find(article => article.id === insight.articleId)
+          ).filter(Boolean) || [],
           topInteractionArticles: [], // 可以从analysisResult中计算
           aiSummaries: analysisResult.aiSummaries,
           structuredInfo: analysisResult.structuredInfo,
           aiInsights: analysisResult.aiInsights,
           ruleInsights: analysisResult.ruleInsights,
+          structuredTopicInsights: analysisResult.structuredTopicInsights,
           metadata: analysisResult.metadata
         })
       } catch (saveError) {

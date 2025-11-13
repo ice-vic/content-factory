@@ -701,8 +701,8 @@ ${JSON.stringify(insightsSummary, null, 2)}
   } catch (error) {
     console.error('生成选题洞察失败:', error);
     console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       topArticlesCount: topArticleInsights.length
     });
     onProgress?.('选题洞察生成失败，使用备用方案', 100);

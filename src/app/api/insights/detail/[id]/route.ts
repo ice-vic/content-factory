@@ -35,11 +35,41 @@ export async function GET(
     const analysisResult = history.analysisResult;
 
     // 提取结构化选题洞察数据
-    const structuredTopicInsights = analysisResult.aiGeneratedInsights
-      ? JSON.parse(analysisResult.aiGeneratedInsights)
-      : [];
+    let structuredTopicInsights: any[] = [];
+    try {
+      // 尝试解析新字段
+      if (analysisResult.structuredTopicInsights) {
+        const parsed = JSON.parse(analysisResult.structuredTopicInsights);
+        structuredTopicInsights = Array.isArray(parsed) ? parsed : [];
+      } else if (analysisResult.aiGeneratedInsights) {
+        // 向后兼容：如果新字段不存在，使用旧字段
+        const parsed = JSON.parse(analysisResult.aiGeneratedInsights);
+        structuredTopicInsights = Array.isArray(parsed) ? parsed : [];
+      }
 
-    const topArticleInsights = []; // 这里可以从其他数据源获取，暂时为空
+      // 数据完整性验证和修复
+      structuredTopicInsights = structuredTopicInsights.map((insight: any, index: number) => ({
+        id: insight.id || `insight_${Date.now()}_${index}`,
+        title: insight.title || '未命名洞察',
+        coreFinding: insight.coreFinding || '暂无核心发现',
+        difficulty: insight.difficulty || 'medium',
+        confidence: insight.confidence || 0.8,
+        recommendedTopics: Array.isArray(insight.recommendedTopics) ? insight.recommendedTopics : [],
+        keywordAnalysis: {
+          highFrequency: Array.isArray(insight.keywordAnalysis?.highFrequency) ? insight.keywordAnalysis.highFrequency : [],
+          missingKeywords: Array.isArray(insight.keywordAnalysis?.missingKeywords) ? insight.keywordAnalysis.missingKeywords : []
+        },
+        contentStrategy: Array.isArray(insight.contentStrategy) ? insight.contentStrategy : [],
+        targetAudience: Array.isArray(insight.targetAudience) ? insight.targetAudience : [],
+        dataSupport: Array.isArray(insight.dataSupport) ? insight.dataSupport : []
+      }));
+
+    } catch (error) {
+      console.error('解析结构化洞察数据失败:', error);
+      structuredTopicInsights = [];
+    }
+
+    const topArticleInsights: any[] = []; // 这里可以从其他数据源获取，暂时为空
 
     const basicStats = {
       avgRead: history.avgRead || 0,

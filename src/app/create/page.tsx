@@ -36,7 +36,12 @@ export default function CreatePage() {
   const [isCreating, setIsCreating] = useState(false)
   const [creationStep, setCreationStep] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
-  const [generatedArticle, setGeneratedArticle] = useState({
+  const [generatedArticle, setGeneratedArticle] = useState<{
+    title: string;
+    content: string;
+    sections: string[];
+    estimatedReadingTime: number;
+  }>({
     title: '',
     content: '',
     sections: [],

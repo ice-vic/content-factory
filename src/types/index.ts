@@ -205,10 +205,18 @@ export interface StructuredTopicInsight {
     metric: string;
     value: string;
     description: string;
-  }[];
+  }[] | {                      // 也支持历史记录中的对象格式
+    avgRead: number;
+    avgLike: number;
+    likeRate: number;
+    sampleSize: number;
+  };
   keywordAnalysis: {          // 关键词分析
     highFrequency: string[];   // 高频词
     missingKeywords: string[]; // 缺失词/机会词
+  } | {                       // 也支持历史记录中的格式
+    highFrequency: string[];
+    opportunity: string[];     // 机会词
   };
   recommendedTopics: string[]; // 推荐选题方向
   contentStrategy: string[];   // 内容策略

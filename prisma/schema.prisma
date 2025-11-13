@@ -43,6 +43,7 @@ model AnalysisResult {
   aiSummaries              String?  @map("ai_summaries")           // AI摘要JSON
   structuredInfo           String?  @map("structured_info")        // 结构化信息JSON
   aiInsights               String?  @map("ai_insights")            // AI洞察JSON
+  structuredTopicInsights  String?  @map("structured_topic_insights") // 结构化选题洞察JSON
 
   // 洞察分类追踪
   ruleBasedInsights        String?  @map("rule_based_insights")    // 规则洞察JSON

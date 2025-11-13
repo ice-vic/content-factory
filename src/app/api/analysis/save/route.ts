@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
       structuredInfo,
       aiInsights,
       ruleInsights,
+      // 结构化选题洞察
+      structuredTopicInsights,
       metadata
     } = body
 
@@ -32,6 +34,17 @@ export async function POST(request: NextRequest) {
         { error: '缺少必需字段: keyword, articles' },
         { status: 400 }
       )
+    }
+
+    // 验证structuredTopicInsights数据格式
+    let validatedStructuredTopicInsights = [];
+    if (structuredTopicInsights && Array.isArray(structuredTopicInsights)) {
+      validatedStructuredTopicInsights = structuredTopicInsights.filter(insight =>
+        insight && typeof insight === 'object' && insight.title && insight.coreFinding
+      );
+      console.log(`验证结构化洞察数据: ${structuredTopicInsights.length} -> ${validatedStructuredTopicInsights.length}`);
+    } else if (structuredTopicInsights) {
+      console.warn('structuredTopicInsights不是数组格式:', typeof structuredTopicInsights);
     }
 
     // 创建搜索历史记录
@@ -65,6 +78,7 @@ export async function POST(request: NextRequest) {
         aiSummaries: aiSummaries ? JSON.stringify(aiSummaries) : null,
         structuredInfo: structuredInfo ? JSON.stringify(structuredInfo) : null,
         aiInsights: aiInsights ? JSON.stringify(aiInsights) : null,
+        structuredTopicInsights: validatedStructuredTopicInsights.length > 0 ? JSON.stringify(validatedStructuredTopicInsights) : null,
 
         // 洞察分类追踪
         ruleBasedInsights: ruleBasedInsights,

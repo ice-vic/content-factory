@@ -203,15 +203,15 @@ export const StructuredTopicInsights = React.memo(function StructuredTopicInsigh
                       </div>
                     )}
 
-                    {(insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity) &&
-                     (insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity).length > 0 && (
+                    {((insight.keywordAnalysis as any).missingKeywords || (insight.keywordAnalysis as any).opportunity) &&
+                     ((insight.keywordAnalysis as any).missingKeywords || (insight.keywordAnalysis as any).opportunity).length > 0 && (
                       <div>
                         <div className="flex items-center space-x-2 mb-2">
                           <TargetIcon className="w-4 h-4 text-orange-600" />
                           <h4 className="font-medium text-gray-900">机会关键词</h4>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {(insight.keywordAnalysis.missingKeywords || insight.keywordAnalysis.opportunity || []).map((word, wordIndex) => (
+                          {((insight.keywordAnalysis as any).missingKeywords || (insight.keywordAnalysis as any).opportunity || []).map((word: string, wordIndex: number) => (
                             <span key={`mk-${insight.id}-${wordIndex}`} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
                               {word}
                             </span>
