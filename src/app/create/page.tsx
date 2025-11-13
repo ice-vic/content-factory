@@ -179,7 +179,14 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
           if (result.success && result.article) {
             setGeneratedArticle(result.article)
           } else {
-            throw new Error(result.error || '文章生成失败')
+            // 如果AI生成失败，但有备选方案，则使用备选方案
+            if (result.fallback) {
+              console.log('🔄 使用备选文章方案')
+              setGeneratedArticle(result.fallback)
+              setErrorMessage('AI服务暂时不可用，已为您生成备用内容')
+            } else {
+              throw new Error(result.error || '文章生成失败')
+            }
           }
           break
         }

@@ -107,7 +107,7 @@ export async function generateArticle(
     length: 'medium',
     platforms: { wechat: true, xiaohongshu: true }
   }
-): Promise<{ success: boolean; article?: GeneratedArticle; error?: string }> {
+): Promise<{ success: boolean; article?: GeneratedArticle; error?: string; fallback?: GeneratedArticle }> {
   try {
     const response = await fetch('/api/content/generate', {
       method: 'POST',
@@ -121,21 +121,30 @@ export async function generateArticle(
       }),
     });
 
-    if (!response.ok) {
-      throw new Error('文章生成失败');
-    }
-
     const result = await response.json();
-    return {
-      success: result.success,
-      article: result.success ? result.data.article : undefined,
-      error: result.success ? undefined : result.error
-    };
+
+    // 处理不同的响应状态
+    if (response.ok && result.success) {
+      return {
+        success: true,
+        article: result.data.article,
+        error: undefined
+      };
+    } else {
+      // API调用失败，但可能有备选方案
+      return {
+        success: false,
+        article: undefined,
+        error: result.error || '文章生成失败',
+        fallback: result.fallback
+      };
+    }
   } catch (error) {
     console.error('文章生成失败:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '未知错误'
+      error: error instanceof Error ? error.message : '网络错误，请检查连接',
+      fallback: undefined
     };
   }
 }

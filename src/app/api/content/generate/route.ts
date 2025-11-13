@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callOpenAIWithMessages } from '@/services/aiService';
+import { callOpenAIWithMessages, checkAIServiceAvailability } from '@/services/aiService';
 
 interface GenerationRequest {
   topic: string;
@@ -23,12 +23,32 @@ interface GenerationRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 开始文章生成请求');
+
+    // 首先检查AI服务可用性
+    const aiStatus = checkAIServiceAvailability();
+    if (!aiStatus.available) {
+      console.error('❌ AI服务不可用:', aiStatus.error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `AI服务不可用: ${aiStatus.error || '未知错误'}`,
+          fallback: generateFallbackArticle()
+        },
+        { status: 503 }
+      );
+    }
+
     const body: GenerationRequest = await request.json();
     const { topic, insight, parameters } = body;
+
+    console.log('📝 文章生成参数:', { topic, hasInsight: !!insight, parameters });
 
     // 构建文章生成提示词
     const systemPrompt = buildSystemPrompt(parameters);
     const userPrompt = buildUserPrompt(topic, insight, parameters);
+
+    console.log('🤖 开始调用AI生成文章');
 
     // 调用AI生成文章
     const response = await callOpenAIWithMessages([
@@ -37,10 +57,11 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!response.choices || response.choices.length === 0) {
-      throw new Error('AI生成失败');
+      throw new Error('AI生成失败：返回结果为空');
     }
 
     const generatedContent = response.choices[0].message.content;
+    console.log('✅ AI文章生成成功，内容长度:', generatedContent?.length || 0);
 
     // 解析生成的内容
     const parsedArticle = parseGeneratedContent(generatedContent);
@@ -59,15 +80,74 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('文章生成失败:', error);
+    console.error('❌ 文章生成失败:', error);
+
+    // 根据错误类型提供不同的错误信息
+    let errorMessage = '文章生成失败';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      if (error.message.includes('401') || error.message.includes('API密钥无效')) {
+        errorMessage = 'AI服务认证失败，请检查API密钥配置';
+        statusCode = 401;
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'AI服务请求超时，请稍后重试';
+        statusCode = 408;
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'AI服务调用频率过高，请稍后重试';
+        statusCode = 429;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : '文章生成失败'
+        error: errorMessage,
+        fallback: generateFallbackArticle()
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
+}
+
+// 生成备用文章
+function generateFallbackArticle() {
+  return {
+    title: 'AI文章生成暂时不可用',
+    content: `# AI文章生成暂时不可用
+
+很抱歉，AI文章生成服务暂时不可用。可能的原因：
+- API服务暂时中断
+- API密钥配置问题
+- 网络连接问题
+
+## 建议解决方案
+
+1. **检查API配置**
+   - 确认API密钥是否正确配置
+   - 验证API服务是否正常
+
+2. **稍后重试**
+   - 过几分钟后再次尝试
+   - 刷新页面重新加载
+
+3. **联系管理员**
+   - 如果问题持续存在，请联系技术支持
+
+## 手动创作建议
+
+您可以基于以下结构手动创作内容：
+1. **标题设计** - 吸引目标受众注意
+2. **引言部分** - 简要介绍主题背景
+3. **正文内容** - 分段阐述核心观点
+4. **总结结尾** - 总结要点并给出建议
+
+感谢您的理解和耐心。`,
+    sections: ['问题说明', '解决方案', '手动创作建议'],
+    estimatedReadingTime: 2
+  };
 }
 
 function buildSystemPrompt(parameters: GenerationRequest['parameters']): string {
