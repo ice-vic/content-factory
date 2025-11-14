@@ -50,11 +50,6 @@ const navItems = [
     icon: ClipboardListIcon,
   },
   {
-    href: '/history',
-    label: '历史记录',
-    icon: HistoryIcon,
-  },
-  {
     href: '/settings',
     label: 'API设置',
     icon: CogIcon,

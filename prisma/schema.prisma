@@ -21,6 +21,8 @@ model SearchHistory {
   originalRate Float?  @map("original_rate")
   status      String   @default("completed") // 'completed', 'failed', 'processing'
   errorMessage String? @map("error_message")
+  type        String   @default("wechat") // 'wechat', 'xiaohongshu'
+  duration    Int?     @map("duration") // 分析耗时(秒)
 
   // 关联分析结果
   analysisResult AnalysisResult?

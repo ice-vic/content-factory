@@ -7,6 +7,7 @@ import ArticleList from '@/components/ArticleList'
 import { ReadDistributionChart } from '@/components/ReadDistributionChart'
 import { PublishTimeAnalysis } from '@/components/PublishTimeAnalysis'
 import { StructuredTopicInsights } from '@/components/StructuredTopicInsights'
+import { HistoryModal } from '@/components/HistoryModal'
 import {
   SearchIcon,
   RefreshCwIcon,
@@ -19,7 +20,8 @@ import {
   LightbulbIcon,
   SearchIcon as SearchIcon2,
   ExternalLinkIcon,
-  CloudIcon
+  CloudIcon,
+  HistoryIcon
 } from 'lucide-react'
 import {
   searchWechatArticles,
@@ -48,6 +50,7 @@ export default function AnalysisPage() {
   const [completeAnalysisResult, setCompleteAnalysisResult] = useState<CompleteAnalysisResult | null>(null)
   const [analysisProgress, setAnalysisProgress] = useState<EnhancedAnalysisProgress | null>(null)
     const [aiServiceStatus, setAiServiceStatus] = useState<{available: boolean; error?: string; configured: boolean}>({available: false, configured: false})
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
 
   const recentKeywords = ['AI创业', '内容营销', '小红书运营', '数字化转型']
@@ -359,8 +362,21 @@ export default function AnalysisPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 页面标题 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI增强选题分析</h1>
-          <p className="text-gray-600">基于公众号数据，结合GPT-4o深度分析，提供智能洞察和创作建议</p>
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">AI增强选题分析</h1>
+              <p className="text-gray-600">基于公众号数据，结合GPT-4o深度分析，提供智能洞察和创作建议</p>
+            </div>
+
+            {/* 历史记录按钮 */}
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <HistoryIcon className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">查询历史记录</span>
+            </button>
+          </div>
 
           {/* AI服务状态 */}
           {isClient && (
@@ -808,6 +824,13 @@ export default function AnalysisPage() {
           </div>
         )}
       </div>
+
+      {/* 历史记录弹窗 */}
+      <HistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        type="wechat"
+      />
     </div>
   )
 }
