@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { HistoryIcon, XIcon, ExternalLinkIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react'
+import { ConfirmDialog } from './ConfirmDialog'
 
 interface HistoryItem {
   id: string
@@ -28,6 +29,15 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 删除相关状态
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean
+    itemId: string | null
+    itemKeyword: string | null
+  }>({ show: false, itemId: null, itemKeyword: null })
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null)
+
   // 处理查看详情
   const handleViewDetail = (recordId: string) => {
     // 根据类型跳转到对应的详情页面
@@ -48,6 +58,61 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
       router.push(`/xiaohongshu?keyword=${encodeURIComponent(keyword)}&return=true`)
     }
     onClose() // 关闭弹窗
+  }
+
+  // 处理删除点击
+  const handleDeleteClick = (item: HistoryItem) => {
+    setDeleteConfirm({
+      show: true,
+      itemId: item.id,
+      itemKeyword: item.keyword
+    })
+    setDeleteMessage(null)
+  }
+
+  // 取消删除
+  const handleCancelDelete = () => {
+    setDeleteConfirm({ show: false, itemId: null, itemKeyword: null })
+    setDeleteMessage(null)
+  }
+
+  // 确认删除
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.itemId) return
+
+    setDeleteLoading(true)
+    setDeleteMessage(null)
+
+    try {
+      const response = await fetch(`/api/history/${deleteConfirm.itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // 从列表中移除已删除的项
+        setHistoryItems(prev => prev.filter(item => item.id !== deleteConfirm.itemId))
+
+        // 显示成功消息
+        setDeleteMessage('删除成功')
+
+        // 2秒后关闭对话框
+        setTimeout(() => {
+          handleCancelDelete()
+        }, 2000)
+      } else {
+        setDeleteMessage(result.error || '删除失败，请稍后重试')
+      }
+    } catch (err) {
+      console.error('删除历史记录失败:', err)
+      setDeleteMessage('网络错误，删除失败')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   // 获取历史记录
@@ -119,157 +184,199 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-        {/* 头部 */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
-              <HistoryIcon className="w-5 h-5 text-blue-600" />
+    <>
+      {/* 主历史记录弹窗 */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+          {/* 头部 */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                <HistoryIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {type === 'wechat' ? '公众号' : '小红书'}分析历史
+                </h2>
+                <p className="text-sm text-gray-500">查看历史分析记录</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {type === 'wechat' ? '公众号' : '小红书'}分析历史
-              </h2>
-              <p className="text-sm text-gray-500">查看历史分析记录</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XIcon className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <XIcon className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
 
-        {/* 内容 */}
-        <div className="flex-1 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <RefreshCwIcon className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">加载历史记录中...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <XIcon className="w-6 h-6 text-red-600" />
+          {/* 内容 */}
+          <div className="flex-1 overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <RefreshCwIcon className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-600">加载历史记录中...</p>
                 </div>
-                <p className="text-red-600 mb-4">{error}</p>
-                <button
-                  onClick={fetchHistory}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  重试
-                </button>
               </div>
-            </div>
-          ) : historyItems.length === 0 ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <HistoryIcon className="w-6 h-6 text-gray-400" />
-                </div>
-                <p className="text-gray-600 mb-2">暂无历史记录</p>
-                <p className="text-sm text-gray-500">开始你的第一次分析吧</p>
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-y-auto h-full">
-              <div className="p-4 space-y-3">
-                {historyItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+            ) : error ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <XIcon className="w-6 h-6 text-red-600" />
+                  </div>
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={fetchHistory}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-medium text-gray-900 truncate">
-                            {item.keyword}
-                          </h3>
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(item.status)}`}>
-                            {getStatusText(item.status)}
-                          </span>
-                        </div>
-
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <div className="flex items-center space-x-4">
-                            <span>获取 {item.articleCount} 篇文章</span>
-                            <span>耗时 {item.duration}s</span>
+                    重试
+                  </button>
+                </div>
+              </div>
+            ) : historyItems.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <HistoryIcon className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 mb-2">暂无历史记录</p>
+                  <p className="text-sm text-gray-500">开始你的第一次分析吧</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-y-auto h-full">
+                <div className="p-4 space-y-3">
+                  {historyItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="font-medium text-gray-900 truncate">
+                              {item.keyword}
+                            </h3>
+                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(item.status)}`}>
+                              {getStatusText(item.status)}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {formatDate(item.createdAt)}
-                          </div>
-                        </div>
 
-                        {item.result_summary && (
-                          <div className="mt-3 text-sm text-gray-600">
-                            <div className="flex flex-wrap gap-2">
-                              {item.result_summary.totalArticles && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                  总数: {item.result_summary.totalArticles}
-                                </span>
-                              )}
-                              {item.result_summary.avgLikes && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                  平均点赞: {item.result_summary.avgLikes}
-                                </span>
-                              )}
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div className="flex items-center space-x-4">
+                              <span>获取 {item.articleCount} 篇文章</span>
+                              <span>耗时 {item.duration}s</span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatDate(item.createdAt)}
                             </div>
                           </div>
-                        )}
-                      </div>
 
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button
-                          onClick={() => handleViewDetail(item.id)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="查看详情"
-                        >
-                          <ExternalLinkIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleReanalyze(item.keyword, item.params)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="重新分析"
-                        >
-                          <RefreshCwIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="删除记录"
-                        >
-                          <Trash2Icon className="w-4 h-4" />
-                        </button>
+                          {item.result_summary && (
+                            <div className="mt-3 text-sm text-gray-600">
+                              <div className="flex flex-wrap gap-2">
+                                {item.result_summary.totalArticles && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    总数: {item.result_summary.totalArticles}
+                                  </span>
+                                )}
+                                {item.result_summary.avgLikes && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                    平均点赞: {item.result_summary.avgLikes}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => handleViewDetail(item.id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="查看详情"
+                          >
+                            <ExternalLinkIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleReanalyze(item.keyword, item.params)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="重新分析"
+                          >
+                            <RefreshCwIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(item)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="删除记录"
+                          >
+                            <Trash2Icon className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 底部 */}
+          {historyItems.length > 0 && (
+            <div className="p-4 border-t bg-gray-50">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  共 {historyItems.length} 条记录
+                </p>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  关闭
+                </button>
               </div>
             </div>
           )}
         </div>
-
-        {/* 底部 */}
-        {historyItems.length > 0 && (
-          <div className="p-4 border-t bg-gray-50">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                共 {historyItems.length} 条记录
-              </p>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                关闭
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.show}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="确认删除历史记录"
+        message={`您确定要删除历史记录 "${deleteConfirm.itemKeyword}" 吗？`}
+        confirmText="确认删除"
+        cancelText="取消"
+        loading={deleteLoading}
+      />
+
+      {/* 删除结果提示 */}
+      {deleteMessage && deleteConfirm.show && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm">
+          <div
+            className={`p-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+              deleteMessage.includes('成功')
+                ? 'bg-green-100 border border-green-200'
+                : 'bg-red-100 border border-red-200'
+            }`}
+          >
+            <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+              deleteMessage.includes('成功')
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}>
+              {deleteMessage.includes('成功') ? '✓' : '✕'}
+            </div>
+            <p className={`text-sm font-medium ${
+              deleteMessage.includes('成功') ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {deleteMessage}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
