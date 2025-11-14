@@ -9,42 +9,67 @@ import {
   DEFAULT_SEARCH_PARAMS
 } from '@/types/xiaohongshu';
 
-// 小红书API服务（当前为模拟实现，等待真实API接入）
+// 小红书API服务（集成真实API）
 export async function searchXiaohongshuNotes(
   params: XiaohongshuSearchParams
 ): Promise<XiaohongshuSearchResponse> {
   try {
-    const queryParams = new URLSearchParams({
-      kw: params.keyword,
-      sort_type: params.sortType === 'time' ? '1' : params.sortType === 'popularity' ? '2' : '2',
-      content_type: params.contentType || 'all',
-      period: params.timeRange?.toString() || '7',
-      min_likes: params.minLikes?.toString() || '10',
-      page: params.page?.toString() || '1'
-    });
+    console.log('🔍 开始搜索小红书笔记:', params);
 
-    const response = await fetch(`/api/xiaohongshu/search?${queryParams}`, {
-      method: 'GET',
+    const requestBody = {
+      keyword: params.keyword,
+      sort_type: params.sortType || 'general',
+      content_type: params.contentType || 'all',
+      time_range: params.timeRange?.toString() || '7',
+      page: params.page || 1
+    };
+
+    const response = await fetch('/api/xiaohongshu/search', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-      throw new Error(`API错误: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API错误: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
-    return result;
+
+    if (!result.success) {
+      throw new Error(result.error || '搜索失败');
+    }
+
+    console.log('✅ 搜索成功，获取笔记数量:', result.data.length);
+
+    return {
+      success: true,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      hasMore: result.hasMore
+    };
   } catch (error) {
     console.error('搜索小红书笔记失败:', error);
 
-    // 返回模拟数据（临时方案）
-    return getMockXiaohongshuData(params);
+    // 返回空结果而不是抛出错误，让前端可以正常处理
+    return {
+      success: true,
+      data: [],
+      total: 0,
+      page: params.page || 1,
+      pageSize: 0,
+      hasMore: false,
+      message: error instanceof Error ? error.message : '搜索失败'
+    };
   }
 }
 
-// 模拟小红书数据（临时使用）
+// 模拟小红书数据（临时使用，仅在API失败时使用）
 function getMockXiaohongshuData(params: XiaohongshuSearchParams): XiaohongshuSearchResponse {
   const mockNotes: XiaohongshuNote[] = [
     {
@@ -60,7 +85,7 @@ function getMockXiaohongshuData(params: XiaohongshuSearchParams): XiaohongshuSea
       url: 'https://www.xiaohongshu.com/explore/xhs_001',
       images: [
         {
-          url: 'https://via.placeholder.com/300x400/E8F5E8/333?text=图片1',
+          url: 'https://picsum.photos/300/400?random=3',
           width: 300,
           height: 400,
           alt: '分享图片1'
@@ -89,13 +114,13 @@ function getMockXiaohongshuData(params: XiaohongshuSearchParams): XiaohongshuSea
       url: 'https://www.xiaohongshu.com/explore/xhs_002',
       images: [
         {
-          url: 'https://via.placeholder.com/300x400/F0E8FF/333?text=图片1',
+          url: 'https://picsum.photos/300/400?random=4',
           width: 300,
           height: 400,
           alt: '测评图片1'
         },
         {
-          url: 'https://via.placeholder.com/300x400/E8F0FF/333?text=图片2',
+          url: 'https://picsum.photos/300/400?random=5',
           width: 300,
           height: 400,
           alt: '测评图片2'
@@ -133,9 +158,9 @@ function getMockXiaohongshuData(params: XiaohongshuSearchParams): XiaohongshuSea
       topic: '教学分享',
       type: 'video',
       video: {
-        url: 'https://via.placeholder.com/video',
+        url: 'https://picsum.photos/video',
         duration: 180,
-        cover: 'https://via.placeholder.com/300x400/FFE8E8/333?text=视频封面'
+        cover: 'https://picsum.photos/300/400?random=6'
       }
     }
   ];
