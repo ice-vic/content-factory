@@ -5,17 +5,26 @@ const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
-    // 获取12小时前的时间戳
-    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    // 获取查询参数
+    const { searchParams } = new URL(request.url);
+    const hoursParam = searchParams.get('hours');
+    const hours = hoursParam ? parseInt(hoursParam, 10) : 12; // 默认12小时
 
-    // 从数据库获取12小时内的分析记录
+    // 计算时间范围，hours=0表示获取全部记录
+    let whereCondition: any = {
+      status: 'completed'
+    };
+
+    if (hours > 0) {
+      const timeAgo = new Date(Date.now() - hours * 60 * 60 * 1000);
+      whereCondition.searchTime = {
+        gte: timeAgo
+      };
+    }
+
+    // 从数据库获取分析记录
     const recentHistories = await prisma.searchHistory.findMany({
-      where: {
-        searchTime: {
-          gte: twelveHoursAgo
-        },
-        status: 'completed'
-      },
+      where: whereCondition,
       include: {
         analysisResult: true
       },

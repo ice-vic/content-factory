@@ -67,10 +67,11 @@ export interface GeneratedArticle {
   }>;
 }
 
-// 获取12小时内的历史洞察
-export async function getRecentInsightHistory(): Promise<InsightHistory[]> {
+// 获取指定时间范围内的历史洞察
+export async function getInsightHistory(hours: number = 12): Promise<InsightHistory[]> {
   try {
-    const response = await fetch('/api/insights/history', {
+    const url = hours > 0 ? `/api/insights/history?hours=${hours}` : '/api/insights/history?hours=0';
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -94,6 +95,16 @@ export async function getRecentInsightHistory(): Promise<InsightHistory[]> {
     console.error('获取洞察历史失败:', error);
     return []; // 确保总是返回数组
   }
+}
+
+// 获取12小时内的历史洞察（保持向后兼容）
+export async function getRecentInsightHistory(): Promise<InsightHistory[]> {
+  return getInsightHistory(12);
+}
+
+// 获取全部历史洞察
+export async function getAllInsightHistory(): Promise<InsightHistory[]> {
+  return getInsightHistory(0);
 }
 
 // 获取特定洞察的详细信息

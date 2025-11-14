@@ -8,7 +8,8 @@ import {
   ClipboardListIcon,
   HomeIcon,
   CogIcon,
-  HistoryIcon
+  HistoryIcon,
+  HeartIcon
 } from 'lucide-react'
 
 const navItems = [
@@ -19,8 +20,13 @@ const navItems = [
   },
   {
     href: '/analysis',
-    label: '选题分析',
+    label: '公众号分析',
     icon: BarChart3Icon,
+  },
+  {
+    href: '/xiaohongshu',
+    label: '小红书分析',
+    icon: HeartIcon,
   },
   {
     href: '/create',

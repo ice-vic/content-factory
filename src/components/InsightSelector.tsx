@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wand2Icon, ClockIcon, FileTextIcon, Trash2Icon, EditIcon } from 'lucide-react';
-import { getRecentInsightHistory, deleteInsightHistory, updateInsightHistory, type InsightHistory } from '@/services/contentService';
+import { Wand2Icon, ClockIcon, FileTextIcon, Trash2Icon, EditIcon, HistoryIcon } from 'lucide-react';
+import { getRecentInsightHistory, getAllInsightHistory, deleteInsightHistory, updateInsightHistory, type InsightHistory } from '@/services/contentService';
 
 interface InsightSelectorProps {
   selectedInsight: string;
@@ -15,15 +15,16 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const [insightDetails, setInsightDetails] = useState<Map<string, any>>(new Map());
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     loadInsightHistory();
-  }, []);
+  }, [showAllHistory]);
 
   const loadInsightHistory = async () => {
     try {
       setLoading(true);
-      const history = await getRecentInsightHistory();
+      const history = showAllHistory ? await getAllInsightHistory() : await getRecentInsightHistory();
       setInsights(history);
     } catch (error) {
       console.error('加载洞察历史失败:', error);
@@ -110,9 +111,19 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
     <div className="space-y-4">
       {/* 洞察选择器 */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          选择洞察报告
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-gray-700">
+            选择洞察报告
+          </label>
+          <button
+            onClick={() => setShowAllHistory(!showAllHistory)}
+            className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
+            title={showAllHistory ? "切换到最近12小时" : "显示全部历史记录"}
+          >
+            <HistoryIcon className="w-4 h-4" />
+            <span>{showAllHistory ? '最近12小时' : '全部历史'}</span>
+          </button>
+        </div>
         <div className="relative">
           <select
             value={selectedInsight}
@@ -213,7 +224,9 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
       {!loading && insights.filter(insight => insight.structuredTopicInsightsCount > 0).length === 0 && (
         <div className="text-center py-4 text-gray-500">
           <Wand2Icon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-          <p className="text-sm">12小时内暂无可用的洞察历史</p>
+          <p className="text-sm">
+            {showAllHistory ? '暂无任何可用的洞察历史' : '12小时内暂无可用的洞察历史'}
+          </p>
           <p className="text-xs mt-1">请先在选题分析页面生成洞察报告</p>
         </div>
       )}
