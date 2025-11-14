@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation'
 import { XiaohongshuNoteList } from '@/components/XiaohongshuNoteList'
 // import { XiaohongshuAnalytics } from '@/components/XiaohongshuAnalytics'
 import { XiaohongshuStructuredInsights } from '@/components/XiaohongshuStructuredInsights'
+import { HistoryModal } from '@/components/HistoryModal'
 import {
   SearchIcon,
   RefreshCwIcon,
@@ -23,16 +24,22 @@ import {
   MessageCircleIcon,
   PlayIcon,
   Image as ImageIcon,
-  HashIcon
+  HashIcon,
+  HistoryIcon
 } from 'lucide-react'
 import {
   searchXiaohongshuNotes,
-  analyzeWithAI,
+  analyzeWithAI
+} from '@/services/xiaohongshuService'
+import {
+  saveXiaohongshuAnalysisResult
+} from '@/services/xiaohongshuSaveService'
+import {
   XiaohongshuNote,
   XiaohongshuSearchParams,
   XiaohongshuCompleteAnalysisResult,
   XiaohongshuAnalysisProgress
-} from '@/services/xiaohongshuService'
+} from '@/types/xiaohongshu'
 import {
   checkAIServiceAvailability,
   getAIConfig
@@ -43,11 +50,13 @@ export default function XiaohongshuAnalysisPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [analysisStartTime, setAnalysisStartTime] = useState<number>(0)
   const [notes, setNotes] = useState<XiaohongshuNote[]>([])
   const [completeAnalysisResult, setCompleteAnalysisResult] = useState<XiaohongshuCompleteAnalysisResult | null>(null)
   const [analysisProgress, setAnalysisProgress] = useState<XiaohongshuAnalysisProgress | null>(null)
   const [aiServiceStatus, setAiServiceStatus] = useState<{available: boolean; error?: string; configured: boolean}>({available: false, configured: false})
   const [isClient, setIsClient] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [searchParams, setSearchParams] = useState<XiaohongshuSearchParams>({
     keyword: '',
     sortType: 'popularity',
@@ -102,6 +111,7 @@ export default function XiaohongshuAnalysisPage() {
     setNotes([])
     setCompleteAnalysisResult(null)
     setAnalysisProgress(null)
+    setAnalysisStartTime(Date.now())
 
     try {
       // 更新搜索参数
@@ -169,8 +179,20 @@ export default function XiaohongshuAnalysisPage() {
 
       setCompleteAnalysisResult(analysisResult)
 
-      // 步骤3: 保存分析结果（可选）
-      // TODO: 实现保存功能
+      // 步骤3: 保存分析结果
+      try {
+        const duration = Math.round((Date.now() - analysisStartTime) / 1000)
+        await saveXiaohongshuAnalysisResult({
+          keyword: keyword.trim(),
+          notes: allNotes,
+          completeAnalysisResult: analysisResult,
+          duration
+        })
+        console.log('✅ 小红书分析结果保存成功')
+      } catch (saveError) {
+        console.error('❌ 保存小红书分析结果失败:', saveError)
+        // 不影响用户看到分析结果，只记录错误
+      }
 
       setIsAnalyzing(false)
       setShowResults(true)
@@ -223,8 +245,21 @@ export default function XiaohongshuAnalysisPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 页面标题 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">小红书选题分析</h1>
-          <p className="text-gray-600">基于小红书数据，结合GPT-4o深度分析，提供智能洞察和创作建议</p>
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">小红书选题分析</h1>
+              <p className="text-gray-600">基于小红书数据，结合GPT-4o深度分析，提供智能洞察和创作建议</p>
+            </div>
+
+            {/* 历史记录按钮 */}
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <HistoryIcon className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">查询历史记录</span>
+            </button>
+          </div>
 
           {/* AI服务状态 */}
           {isClient && (
@@ -484,21 +519,21 @@ export default function XiaohongshuAnalysisPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-gray-800">
-                      获取 <span className="text-orange-600 font-bold">{searchParams.maxResults}</span> 条笔记
+                      获取 <span className="text-orange-600 font-bold">{searchParams.maxResults || 10}</span> 条笔记
                     </div>
                     <div className="text-xs text-gray-600">
-                      需调用 {Math.ceil(searchParams.maxResults / 22)} 次 API
+                      需调用 {Math.ceil((searchParams.maxResults || 10) / 22)} 次 API
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-gray-600 mb-1">预计成本</div>
                   <div className="text-lg font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                    ¥{(Math.ceil(searchParams.maxResults / 22) * 0.1).toFixed(2)}
+                    ¥{(Math.ceil((searchParams.maxResults || 10) / 22) * 0.1).toFixed(2)}
                   </div>
                   <div className="text-xs text-green-600 font-medium">
-                    {searchParams.maxResults <= 10 ? '💰 经济选择' :
-                     searchParams.maxResults <= 15 ? '⚖️ 平衡选择' :
+                    {(searchParams.maxResults || 10) <= 10 ? '💰 经济选择' :
+                     (searchParams.maxResults || 10) <= 15 ? '⚖️ 平衡选择' :
                      '📊 全面分析'}
                   </div>
                 </div>
@@ -696,13 +731,20 @@ export default function XiaohongshuAnalysisPage() {
                   版本: {completeAnalysisResult.metadata.version}
                 </div>
                 <div>
-                  {new Date(completeAnalysisResult.metadata.timestamp).toLocaleString()}
+                  {new Date(completeAnalysisResult.metadata.searchTime).toLocaleString()}
                 </div>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* 历史记录弹窗 */}
+      <HistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        type="xiaohongshu"
+      />
     </div>
   )
 }

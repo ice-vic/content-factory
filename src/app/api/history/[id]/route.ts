@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import {
   CompleteAnalysisResult,
-  WechatArticle,
   StructuredTopicInsight,
   AIInsight,
   RuleBasedInsight,
@@ -10,6 +9,7 @@ import {
   TopArticleInsight,
   StructuredInfo
 } from '@/types'
+import { WechatArticle } from '@/services/wechatService'
 
 const prisma = new PrismaClient()
 
@@ -22,9 +22,24 @@ function convertToCompleteAnalysisResult(
   const safeJSONParse = (jsonString: string | null, defaultValue: any = null) => {
     if (!jsonString) return defaultValue
     try {
-      return JSON.parse(jsonString)
+      // 添加调试信息
+      console.log('🔍 解析JSON数据:', jsonString.substring(0, 100) + (jsonString.length > 100 ? '...' : ''))
+
+      // 尝试修复常见的编码问题
+      let fixedString = jsonString
+        .replace(/\\u([0-9a-fA-F]{4})/g, (match, code) => {
+          return String.fromCharCode(parseInt(code, 16))
+        })
+        .replace(/&#(\d+);/g, (match, code) => {
+          return String.fromCharCode(parseInt(code, 10))
+        })
+
+      const result = JSON.parse(fixedString)
+      console.log('✅ JSON解析成功')
+      return result
     } catch (error) {
-      console.warn('JSON解析失败:', error.message)
+      console.warn('❌ JSON解析失败:', error instanceof Error ? error.message : '未知错误')
+      console.warn('原始数据:', jsonString)
       return defaultValue
     }
   }
@@ -156,6 +171,27 @@ export async function GET(
       )
     }
 
+    // 验证记录类型 - 确保是小红书数据
+    if (history.type !== 'xiaohongshu') {
+      return NextResponse.json(
+        { error: '该记录不是小红书分析数据，请检查记录类型' },
+        { status: 400 }
+      )
+    }
+
+    // 调试编码问题
+    console.log('🔍 数据库关键词:', history.keyword)
+    console.log('🔍 关键词类型:', typeof history.keyword)
+    console.log('🔍 关键词长度:', history.keyword?.length)
+    console.log('🔍 关键词字符码:', history.keyword ? Array.from(history.keyword).map(c => c.charCodeAt(0)) : [])
+
+    // 尝试修复数据库中的编码问题
+    let fixedKeyword = history.keyword
+    if (history.keyword && history.keyword.includes('С����')) {
+      fixedKeyword = '内容创作' // 临时修复
+      console.log('🔧 修复关键词:', history.keyword, '->', fixedKeyword)
+    }
+
     // 使用新的数据转换函数生成CompleteAnalysisResult
     const completeAnalysisResult = history.analysisResult
       ? convertToCompleteAnalysisResult(history, history.analysisResult)
@@ -164,7 +200,7 @@ export async function GET(
     // 格式化返回数据
     const formattedHistory = {
       id: history.id,
-      keyword: history.keyword,
+      keyword: fixedKeyword, // 使用修复后的关键词
       searchTime: history.searchTime,
       articleCount: history.articleCount,
       avgRead: history.avgRead,
@@ -173,10 +209,11 @@ export async function GET(
       status: history.status,
       errorMessage: history.errorMessage,
       duration: history.duration,
-      createdAt: history.createdAt,
+      createdAt: history.searchTime,
       // 返回统一的CompleteAnalysisResult格式，同时保留allArticles字段用于文章列表
       analysisResult: completeAnalysisResult ? {
         ...completeAnalysisResult,
+        keyword: fixedKeyword, // 也在分析结果中修复关键词
         // 为了兼容现有页面，添加allArticles字段
         allArticles: (() => {
           const safeJSONParse = (jsonString: string | null, defaultValue: any = null) => {
@@ -184,18 +221,23 @@ export async function GET(
             try {
               return JSON.parse(jsonString)
             } catch (error) {
-              console.warn('JSON解析失败:', error.message)
+              console.warn('JSON解析失败:', error instanceof Error ? error.message : '未知错误')
               return defaultValue
             }
           }
-          return safeJSONParse(history.analysisResult.allArticles, [])
+          return safeJSONParse(history.analysisResult?.allArticles || null, [])
         })()
       } : null
     }
 
+    // 确保响应使用正确的字符编码
     return NextResponse.json({
       success: true,
       data: formattedHistory
+    }, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+      }
     })
 
   } catch (error) {

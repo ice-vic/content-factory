@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // 格式化返回数据
-    const formattedHistories = histories.map(history => ({
+    const formattedHistories = histories.map((history: any) => ({
       id: history.id,
       type: history.type,
       keyword: history.keyword,

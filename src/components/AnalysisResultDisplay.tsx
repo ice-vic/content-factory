@@ -16,10 +16,8 @@ import {
   LightbulbIcon,
   AlertCircleIcon
 } from 'lucide-react'
-import {
-  CompleteAnalysisResult,
-  WechatArticle
-} from '@/types'
+import { CompleteAnalysisResult } from '@/types'
+import { WechatArticle } from '@/services/wechatService'
 
 interface AnalysisResultDisplayProps {
   completeAnalysisResult: CompleteAnalysisResult | null

@@ -8,7 +8,7 @@ import type {
   XiaohongshuCover,
   XiaohongshuImageList
 } from '@/types/xiaohongshu-api'
-import { XiaohongshuNote } from '@/types/xiaohongshu'
+import { XiaohongshuNote, XiaohongshuSearchResponse } from '@/types/xiaohongshu'
 
 // API配置
 const API_URL = 'https://www.dajiala.com/fbmain/monitor/v3/xhs'
@@ -117,9 +117,15 @@ function convertApiDataToXiaohongshuNote(
 }
 
 export async function POST(request: NextRequest) {
+  let keyword = '', sort_type = 'general', content_type = 'all', time_range = '7', page = 1
+
   try {
     const body = await request.json()
-    const { keyword, sort_type = 'general', content_type = 'all', time_range = '7', page = 1 } = body
+    keyword = body.keyword
+    sort_type = body.sort_type || 'general'
+    content_type = body.content_type || 'all'
+    time_range = body.time_range || '7'
+    page = body.page || 1
 
     console.log('📥 收到前端请求参数:', {
       keyword,

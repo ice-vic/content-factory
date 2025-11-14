@@ -206,7 +206,7 @@ export default function Navigation() {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.href || '#'}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'text-primary-600 bg-primary-50'
@@ -291,7 +291,7 @@ export default function Navigation() {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href || '#'}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b border-gray-100 ${
                   isActive
                     ? 'text-primary-600 bg-primary-50'
