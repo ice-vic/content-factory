@@ -54,7 +54,7 @@ export default function XiaohongshuAnalysisPage() {
     contentType: 'all',
     timeRange: 7,
     minLikes: 10,
-    maxResults: 30,
+    maxResults: 10,
     page: 1
   })
 
@@ -120,12 +120,13 @@ export default function XiaohongshuAnalysisPage() {
         aiStep: '连接数据源'
       })
 
-      // 获取多页数据来凑足目标数量
+      // 获取多页数据来凑足目标数量（智能计算需要的页数）
       let allNotes: XiaohongshuNote[] = []
       let currentPage = 1
-      const targetCount = finalSearchParams.maxResults || 30
+      const targetCount = finalSearchParams.maxResults || 10
+      const maxPagesNeeded = Math.ceil(targetCount / 22) // 每页约22条数据，智能计算所需页数
 
-      while (allNotes.length < targetCount && currentPage <= 3) { // 最多获取3页
+      while (allNotes.length < targetCount && currentPage <= maxPagesNeeded) {
         const searchResponse = await searchXiaohongshuNotes({
           ...finalSearchParams,
           page: currentPage
@@ -142,9 +143,9 @@ export default function XiaohongshuAnalysisPage() {
         setAnalysisProgress({
           phase: 'fetching',
           message: `正在获取第${currentPage}页数据...`,
-          current: allNotes.length,
+          current: Math.min(allNotes.length, targetCount),
           total: targetCount,
-          aiStep: `已获取 ${allNotes.length} 篇笔记`
+          aiStep: `已获取 ${Math.min(allNotes.length, targetCount)} / ${targetCount} 篇笔记`
         })
       }
 
@@ -302,7 +303,7 @@ export default function XiaohongshuAnalysisPage() {
           </div>
 
           {/* 搜索选项 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">排序方式</label>
               <select
@@ -356,8 +357,107 @@ export default function XiaohongshuAnalysisPage() {
             </div>
           </div>
 
+          {/* 滑动条 - 分析数量 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              分析数量 <span className="text-orange-600 font-bold">({searchParams.maxResults}条笔记)</span>
+            </label>
+            <div className="relative">
+              <style jsx>{`
+                .slider {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 100%;
+                  height: 8px;
+                  border-radius: 5px;
+                  background: linear-gradient(to right, #f97316, #dc2626);
+                  outline: none;
+                  opacity: 0.9;
+                  transition: opacity 0.2s;
+                }
+
+                .slider:hover {
+                  opacity: 1;
+                }
+
+                .slider::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #3b82f6;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+                  transition: all 0.2s;
+                }
+
+                .slider::-webkit-slider-thumb:hover {
+                  transform: scale(1.1);
+                  box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+                }
+
+                .slider::-moz-range-thumb {
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #3b82f6;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+                  transition: all 0.2s;
+                }
+
+                .slider::-moz-range-thumb:hover {
+                  transform: scale(1.1);
+                  box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+                }
+
+                .slider:disabled {
+                  opacity: 0.5;
+                  cursor: not-allowed;
+                }
+
+                .slider:disabled::-webkit-slider-thumb {
+                  cursor: not-allowed;
+                  transform: scale(1);
+                }
+
+                .slider:disabled::-moz-range-thumb {
+                  cursor: not-allowed;
+                  transform: scale(1);
+                }
+              `}</style>
+              <input
+                type="range"
+                min="5"
+                max="20"
+                value={searchParams.maxResults}
+                onChange={(e) => setSearchParams(prev => ({ ...prev, maxResults: parseInt(e.target.value) as any }))}
+                className="slider"
+                disabled={isAnalyzing}
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-3">
+                <span className="font-medium">5条</span>
+                <span className="font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                  最经济
+                </span>
+                <span className="font-medium">10条</span>
+                <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                  推荐
+                </span>
+                <span className="font-medium">15条</span>
+                <span className="font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  最全面
+                </span>
+                <span className="font-medium">20条</span>
+              </div>
+            </div>
+          </div>
+
           {/* 热门关键词 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mb-4">
             <span className="text-sm text-gray-500">热门搜索：</span>
             <div id="popular-keywords" className="flex flex-wrap gap-2">
               {recentKeywords.map((kw, index) => (
@@ -372,6 +472,39 @@ export default function XiaohongshuAnalysisPage() {
               ))}
             </div>
           </div>
+
+          {/* 成本预估 */}
+          {keyword.trim() && (
+            <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200">
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-500 to-red-500"></div>
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full">
+                    <CloudIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">
+                      获取 <span className="text-orange-600 font-bold">{searchParams.maxResults}</span> 条笔记
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      需调用 {Math.ceil(searchParams.maxResults / 22)} 次 API
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-600 mb-1">预计成本</div>
+                  <div className="text-lg font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                    ¥{(Math.ceil(searchParams.maxResults / 22) * 0.1).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-green-600 font-medium">
+                    {searchParams.maxResults <= 10 ? '💰 经济选择' :
+                     searchParams.maxResults <= 15 ? '⚖️ 平衡选择' :
+                     '📊 全面分析'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 错误提示 */}
