@@ -152,7 +152,7 @@ export default function XiaohongshuHistoryDetailPage() {
 
         // 调试编码问题
         console.log('🔍 原始关键词:', record.keyword)
-        console.log('🔍 关键词字符码:', Array.from(record.keyword || '').map(c => c.charCodeAt(0)))
+        console.log('🔍 关键词字符码:', Array.from<string>(record.keyword || '').map(c => c.charCodeAt(0)))
         console.log('🔍 历史记录对象:', record)
 
         setHistoryRecord(record)

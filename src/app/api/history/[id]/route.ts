@@ -45,8 +45,8 @@ function convertToCompleteAnalysisResult(
     }
   }
 
-  // 解析基础数据 - 使用XiaohongshuNote类型
-  const allArticles: XiaohongshuNote[] = safeJSONParse(analysisResult.allArticles, [])
+  // 解析基础数据 - 根据数据类型选择合适的类型
+  let allArticles: any[] = safeJSONParse(analysisResult.allArticles, [])
   const wordCloud = safeJSONParse(analysisResult.wordCloud, [])
   const aiSummaries: ArticleSummary[] = safeJSONParse(analysisResult.aiSummaries, [])
   const structuredInfo: StructuredInfo = safeJSONParse(analysisResult.structuredInfo, {
@@ -100,8 +100,18 @@ function convertToCompleteAnalysisResult(
     }
   }))
 
-  // 小红书特有的字段映射和数据处理
-  console.log('🔍 开始小红书数据转换，历史记录:', {
+  let xiaohongshuCompleteAnalysisResult: any = null;
+
+  // 声明共享变量
+  let avgLikes = 0;
+  let avgCollects = 0;
+  let avgComments = 0;
+  let avgShares = 0;
+  let avgInteractionRate = 0;
+
+  if (history.type === 'xiaohongshu') {
+    // 小红书特有的字段映射和数据处理
+    console.log('🔍 开始小红书数据转换，历史记录:', {
     keyword: history.keyword,
     avgLike: history.avgLike,
     avgCollects: history.avgRead, // 注意：小红书可能用avgRead存储avgCollects
@@ -115,18 +125,18 @@ function convertToCompleteAnalysisResult(
   const totalComments = allArticles.reduce((sum, article) => sum + (article.metrics?.comments || article.comments || 0), 0);
   const totalShares = allArticles.reduce((sum, article) => sum + (article.metrics?.shares || article.shares || 0), 0);
 
-  const avgLikes = allArticles.length > 0 ? Math.round(totalLikes / allArticles.length) : (history.avgLike || 0);
-  const avgCollects = allArticles.length > 0 ? Math.round(totalCollects / allArticles.length) : (history.avgRead || 0);
-  const avgComments = allArticles.length > 0 ? Math.round(totalComments / allArticles.length) : 0;
-  const avgShares = allArticles.length > 0 ? Math.round(totalShares / allArticles.length) : 0;
+  avgLikes = allArticles.length > 0 ? Math.round(totalLikes / allArticles.length) : (history.avgLike || 0);
+  avgCollects = allArticles.length > 0 ? Math.round(totalCollects / allArticles.length) : (history.avgRead || 0);
+  avgComments = allArticles.length > 0 ? Math.round(totalComments / allArticles.length) : 0;
+  avgShares = allArticles.length > 0 ? Math.round(totalShares / allArticles.length) : 0;
 
   // 计算互动率 - 基于总互动量除以笔记数量再除以平均点赞数
-  const avgInteractionRate = allArticles.length > 0 && avgLikes > 0 ?
+  avgInteractionRate = allArticles.length > 0 && avgLikes > 0 ?
     Math.round(((totalLikes + totalCollects + totalComments + totalShares) / (allArticles.length * avgLikes)) * 100) / 100 :
     (history.originalRate || 0);
 
   // 小红书数据类型转换
-  const xiaohongshuCompleteAnalysisResult = {
+  xiaohongshuCompleteAnalysisResult = {
     keyword: history.keyword,
     totalNotes: history.articleCount || allArticles.length,
     processedNotes: allArticles.length,
@@ -202,13 +212,73 @@ function convertToCompleteAnalysisResult(
   };
 
   console.log('✅ 小红书数据转换完成:', {
-    keyword: xiaohongshuCompleteAnalysisResult.keyword,
-    avgLikes: xiaohongshuCompleteAnalysisResult.avgLikes,
-    avgCollects: xiaohongshuCompleteAnalysisResult.avgCollects,
-    avgInteractionRate: xiaohongshuCompleteAnalysisResult.avgInteractionRate
-  });
+      keyword: xiaohongshuCompleteAnalysisResult.keyword,
+      avgLikes: xiaohongshuCompleteAnalysisResult.avgLikes,
+      avgCollects: xiaohongshuCompleteAnalysisResult.avgCollects,
+      avgInteractionRate: xiaohongshuCompleteAnalysisResult.avgInteractionRate
+    });
+  } else {
+    // 公众号数据，创建简化的兼容结构
+    console.log('🔍 开始公众号数据转换，历史记录:', {
+      keyword: history.keyword,
+      avgLike: history.avgLike,
+      avgRead: history.avgRead,
+      originalRate: history.originalRate,
+      articleCount: history.articleCount
+    });
 
-  // 构建CompleteAnalysisResult（保持向后兼容）
+    // 设置公众号的默认值
+    avgLikes = history.avgLike || 0;
+    avgCollects = 0;
+    avgComments = 0;
+    avgShares = 0;
+    avgInteractionRate = 0;
+
+    xiaohongshuCompleteAnalysisResult = {
+      keyword: history.keyword,
+      totalNotes: history.articleCount || allArticles.length,
+      processedNotes: allArticles.length,
+
+      // 公众号数据转换为兼容格式
+      avgLikes: history.avgLike || 0,
+      avgCollects: 0,
+      avgComments: 0,
+      avgShares: 0,
+      avgInteractionRate: 0,
+
+      // 默认结构
+      contentType: { image: 0, video: 0, percentage: { image: 0, video: 0 } },
+      wordCloud: wordCloud,
+      popularTags: [],
+      publishTimeDistribution: [],
+      locationAnalysis: [],
+      interactionDistribution: { high: 0, medium: 0, low: 0 },
+
+      // 默认TOP列表
+      topLikedNotes: allArticles.slice(0, 5),
+      topCollectedNotes: allArticles.slice(0, 5),
+      topCommentedNotes: allArticles.slice(0, 5),
+      topInteractionNotes: allArticles.slice(0, 5),
+
+      // 公众号特有的分析结果
+      structuredTopicInsights: structuredTopicInsights,
+      aiInsights: aiInsights,
+      contentRecommendations: [],
+
+      // 元数据
+      metadata: {
+        searchTime: new Date(),
+        analysisTime: analysisResult.processingTime || 0,
+        modelUsed: analysisResult.aiModelUsed || 'unknown',
+        version: analysisResult.analysisVersion || '1.0'
+      }
+    };
+
+    console.log('✅ 公众号数据转换完成:', {
+      keyword: xiaohongshuCompleteAnalysisResult.keyword,
+      avgLikes: xiaohongshuCompleteAnalysisResult.avgLikes
+    });
+  }
   const completeAnalysisResult: CompleteAnalysisResult = {
     keyword: history.keyword,
     totalArticles: history.articleCount || allArticles.length,
@@ -283,10 +353,10 @@ export async function GET(
       )
     }
 
-    // 验证记录类型 - 确保是小红书数据
-    if (history.type !== 'xiaohongshu') {
+    // 验证记录类型 - 支持公众号和小红书两种数据
+    if (history.type !== 'xiaohongshu' && history.type !== 'wechat') {
       return NextResponse.json(
-        { error: '该记录不是小红书分析数据，请检查记录类型' },
+        { error: '该记录不是有效的分析数据，请检查记录类型' },
         { status: 400 }
       )
     }

@@ -263,6 +263,7 @@ export default function AnalysisPage() {
           avgRead: analysisResult.basicStats.avgRead,
           avgLike: analysisResult.basicStats.avgLike,
           originalRate: analysisResult.basicStats.originalRate,
+          type: 'wechat', // 指定这是公众号数据
           articles: allArticles,
           wordCloud: analysisResult.wordCloud,
           topLikedArticles: analysisResult.topArticleInsights?.map(insight =>

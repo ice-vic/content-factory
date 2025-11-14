@@ -429,7 +429,7 @@ export function generateStructuredTopicInsights(
       ],
       bestPostTime: ['19:00-21:00', '12:00-14:00'],
       contentTypeRecommendation: {
-        type: analysisResult.contentType.percentage.image > 60 ? 'image' : 'video',
+        type: (analysisResult.contentType.percentage.image > 60 ? 'image' : 'video') as 'image' | 'video',
         reasoning: generateSafeUTF8String(`数据显示${analysisResult.contentType.percentage.image > 60 ? '图文' : '视频'}内容在该话题下表现更佳`)
       },
       trendAnalysis: {

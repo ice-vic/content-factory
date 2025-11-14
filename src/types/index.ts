@@ -265,4 +265,57 @@ export interface CompleteAnalysisResult {
     analysisVersion: string;
     timestamp: Date;
   };
+
+  // 小红书数据扩展（向后兼容）
+  xiaohongshuData?: {
+    keyword: string;
+    totalNotes: number;
+    processedNotes: number;
+    avgLikes: number;
+    avgCollects: number;
+    avgComments: number;
+    avgShares: number;
+    avgInteractionRate: number;
+    contentType: {
+      image: number;
+      video: number;
+      percentage: {
+        image: number;
+        video: number;
+      };
+    };
+    popularTags: Array<{
+      tag: string;
+      count: number;
+      avgLikes: number;
+      avgCollects: number;
+    }>;
+    publishTimeDistribution: Array<{
+      hour: number;
+      count: number;
+      avgInteraction: number;
+    }>;
+    locationAnalysis: Array<{
+      location: string;
+      count: number;
+      avgInteraction: number;
+    }>;
+    interactionDistribution: {
+      high: number;
+      medium: number;
+      low: number;
+    };
+    topLikedNotes: any[];
+    topCollectedNotes: any[];
+    topCommentedNotes: any[];
+    topInteractionNotes: any[];
+    wordCloud: Array<{
+      word: string;
+      count: number;
+      type: 'title' | 'content' | 'tag';
+    }>;
+    structuredTopicInsights: any[];
+    aiInsights: string[];
+    contentRecommendations: string[];
+  };
 }

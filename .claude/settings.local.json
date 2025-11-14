@@ -11,7 +11,8 @@
       "Bash(node:*)",
       "Bash(git remote set-url:*)",
       "Bash(npx prisma migrate reset:*)",
-      "Bash(npx prisma generate:*)"
+      "Bash(npx prisma generate:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
