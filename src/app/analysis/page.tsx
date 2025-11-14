@@ -52,6 +52,7 @@ export default function AnalysisPage() {
     const [aiServiceStatus, setAiServiceStatus] = useState<{available: boolean; error?: string; configured: boolean}>({available: false, configured: false})
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [maxResults, setMaxResults] = useState(15) // 默认15篇文章
 
   const recentKeywords = ['AI创业', '内容营销', '小红书运营', '数字化转型']
 
@@ -202,10 +203,10 @@ export default function AnalysisPage() {
         aiStep: '连接数据源'
       })
 
-      // 获取多页数据来凑足30篇文章
+      // 获取多页数据来凑足用户选择的文章数量
       let allArticles: WechatArticle[] = []
       let currentPage = 1
-      const targetCount = 30
+      const targetCount = maxResults || 15
 
       while (allArticles.length < targetCount && currentPage <= 5) { // 最多获取5页
         const searchResponse = await searchWechatArticles({
@@ -454,7 +455,7 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* 历史记录 */}
+          {/* 热门搜索 */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-500">热门搜索：</span>
             <div id="popular-keywords" className="flex flex-wrap gap-2">
@@ -468,6 +469,105 @@ export default function AnalysisPage() {
                   {kw}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 滑动条 - 文章数量 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              分析文章数量 <span className="text-orange-600 font-bold">({maxResults}篇文章)</span>
+            </label>
+            <div className="relative">
+              <style jsx>{`
+                .article-slider {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 100%;
+                  height: 8px;
+                  border-radius: 5px;
+                  background: linear-gradient(to right, #f97316, #dc2626);
+                  outline: none;
+                  opacity: 0.9;
+                  transition: opacity 0.2s;
+                }
+
+                .article-slider:hover {
+                  opacity: 1;
+                }
+
+                .article-slider::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #3b82f6;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+                  transition: all 0.2s;
+                }
+
+                .article-slider::-webkit-slider-thumb:hover {
+                  transform: scale(1.1);
+                  box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+                }
+
+                .article-slider::-moz-range-thumb {
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #3b82f6;
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+                  transition: all 0.2s;
+                }
+
+                .article-slider::-moz-range-thumb:hover {
+                  transform: scale(1.1);
+                  box-shadow: 0 0 15px rgba(59, 130, 246, 0.7);
+                }
+
+                .article-slider:disabled {
+                  opacity: 0.5;
+                  cursor: not-allowed;
+                }
+
+                .article-slider:disabled::-webkit-slider-thumb {
+                  cursor: not-allowed;
+                  transform: scale(1);
+                }
+
+                .article-slider:disabled::-moz-range-thumb {
+                  cursor: not-allowed;
+                  transform: scale(1);
+                }
+              `}</style>
+              <input
+                type="range"
+                min="5"
+                max="30"
+                value={maxResults}
+                onChange={(e) => setMaxResults(parseInt(e.target.value))}
+                className="article-slider"
+                disabled={isAnalyzing}
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-3">
+                <span className="font-medium">5篇</span>
+                <span className="font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                  快速分析
+                </span>
+                <span className="font-medium">15篇</span>
+                <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                  推荐
+                </span>
+                <span className="font-medium">22篇</span>
+                <span className="font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  全面分析
+                </span>
+                <span className="font-medium">30篇</span>
+              </div>
             </div>
           </div>
         </div>
