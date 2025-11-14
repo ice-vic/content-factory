@@ -110,20 +110,20 @@ function convertToCompleteAnalysisResult(
   });
 
   // 计算小红书特有的统计数据
-  const totalLikes = allArticles.reduce((sum, article) => sum + (article.likes || 0), 0);
-  const totalCollects = allArticles.reduce((sum, article) => sum + (article.collects || 0), 0);
-  const totalComments = allArticles.reduce((sum, article) => sum + (article.comments || 0), 0);
-  const totalShares = allArticles.reduce((sum, article) => sum + (article.shares || 0), 0);
+  const totalLikes = allArticles.reduce((sum, article) => sum + (article.metrics?.likes || article.likes || 0), 0);
+  const totalCollects = allArticles.reduce((sum, article) => sum + (article.metrics?.collects || article.collects || 0), 0);
+  const totalComments = allArticles.reduce((sum, article) => sum + (article.metrics?.comments || article.comments || 0), 0);
+  const totalShares = allArticles.reduce((sum, article) => sum + (article.metrics?.shares || article.shares || 0), 0);
 
   const avgLikes = allArticles.length > 0 ? Math.round(totalLikes / allArticles.length) : (history.avgLike || 0);
-  const avgCollects = allArticles.length > 0 ? Math.round(totalCollects / allArticles.length) : (history.avgCollects || 0);
+  const avgCollects = allArticles.length > 0 ? Math.round(totalCollects / allArticles.length) : (history.avgRead || 0);
   const avgComments = allArticles.length > 0 ? Math.round(totalComments / allArticles.length) : 0;
   const avgShares = allArticles.length > 0 ? Math.round(totalShares / allArticles.length) : 0;
 
-  // 计算互动率
-  const avgInteractionRate = allArticles.length > 0 ?
-    Math.round(((totalLikes + totalCollects + totalComments + totalShares) / (allArticles.length * (avgLikes || 1))) * 100) / 100 :
-    0;
+  // 计算互动率 - 基于总互动量除以笔记数量再除以平均点赞数
+  const avgInteractionRate = allArticles.length > 0 && avgLikes > 0 ?
+    Math.round(((totalLikes + totalCollects + totalComments + totalShares) / (allArticles.length * avgLikes)) * 100) / 100 :
+    (history.originalRate || 0);
 
   // 小红书数据类型转换
   const xiaohongshuCompleteAnalysisResult = {
