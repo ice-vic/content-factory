@@ -9,9 +9,18 @@ interface InsightSelectorProps {
   onInsightSelect: (insightId: string, insightDetail?: any) => void;
   disabled?: boolean;
   platform?: 'wechat' | 'xiaohongshu' | null; // 添加平台参数
+  selectedTopicDirection?: string; // 选中的选题方向
+  onTopicDirectionSelect?: (topicDirection: string) => void; // 选题方向选择回调
 }
 
-export default function InsightSelector({ selectedInsight, onInsightSelect, disabled = false, platform = null }: InsightSelectorProps) {
+export default function InsightSelector({
+  selectedInsight,
+  onInsightSelect,
+  disabled = false,
+  platform = null,
+  selectedTopicDirection = '',
+  onTopicDirectionSelect
+}: InsightSelectorProps) {
   const [insights, setInsights] = useState<InsightHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState<string | null>(null);
@@ -57,6 +66,8 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
   const handleInsightChange = async (insightId: string) => {
     if (insightId === '') {
       onInsightSelect('');
+      // 清空选题方向选择
+      onTopicDirectionSelect?.('');
       return;
     }
 
@@ -80,6 +91,10 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
     } else {
       onInsightSelect(insightId, insightDetails.get(insightId));
     }
+  };
+
+  const handleTopicDirectionSelect = (topicDirection: string) => {
+    onTopicDirectionSelect?.(topicDirection);
   };
 
   const handleDeleteInsight = async (insightId: string, event: React.MouseEvent) => {
@@ -208,7 +223,74 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
 
           {/* 展开的详细信息 */}
           {showDetails === selectedInfo.id && insightDetails.has(selectedInfo.id) && (
-            <div className="mt-4 pt-4 border-t border-blue-200">
+            <div className="mt-4 pt-4 border-t border-blue-200 space-y-4">
+              {/* 推荐选题方向 - 单选功能 */}
+              {onTopicDirectionSelect && (
+                <div className="text-sm text-blue-800">
+                  <h5 className="font-medium mb-3 flex items-center">
+                    <span className="text-red-500 mr-1">*</span>
+                    选择选题方向：
+                  </h5>
+                  {(() => {
+                    const detail = insightDetails.get(selectedInfo.id);
+                    const recommendedTopics = detail?.structuredTopicInsights?.[0]?.recommendedTopics ||
+                                           detail?.recommendedTopics || [];
+
+                    if (recommendedTopics.length === 0) {
+                      return (
+                        <div className="text-blue-700 text-sm bg-blue-50 p-3 rounded-lg">
+                          暂无推荐选题方向
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {recommendedTopics.map((topic: string, index: number) => (
+                          <label
+                            key={index}
+                            className={`
+                              flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all
+                              ${selectedTopicDirection === topic
+                                ? 'bg-blue-100 border border-blue-300'
+                                : 'bg-white border border-gray-200 hover:bg-gray-50'
+                              }
+                            `}
+                          >
+                            <input
+                              type="radio"
+                              name={`topic-direction-${selectedInfo.id}`}
+                              value={topic}
+                              checked={selectedTopicDirection === topic}
+                              onChange={() => handleTopicDirectionSelect(topic)}
+                              className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className={`
+                              text-sm leading-relaxed
+                              ${selectedTopicDirection === topic ? 'text-blue-900 font-medium' : 'text-gray-700'}
+                            `}>
+                              {topic}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {selectedTopicDirection && (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center space-x-2 text-green-800">
+                        <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                          <div className="w-2 h-1 bg-white transform rotate-45 translate-y-0.5"></div>
+                        </div>
+                        <span className="text-sm font-medium">已选择：{selectedTopicDirection}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 关键词列表 */}
               <div className="text-sm text-blue-800">
                 <h5 className="font-medium mb-2">关键词列表：</h5>
                 <div className="flex flex-wrap gap-1">

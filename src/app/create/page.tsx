@@ -29,6 +29,7 @@ export default function CreatePage() {
   const [selectedInsightId, setSelectedInsightId] = useState('')
   const [selectedInsightDetail, setSelectedInsightDetail] = useState<any>(null)
   const [selectedInsight, setSelectedInsight] = useState<any>(null)
+  const [selectedTopicDirection, setSelectedTopicDirection] = useState('') // 选中的选题方向
   const [customTopic, setCustomTopic] = useState('')
   const [articleStyle, setArticleStyle] = useState<'professional' | 'casual' | 'humorous'>('professional')
   const [articleLength, setArticleLength] = useState<'short' | 'medium' | 'long'>('medium')
@@ -90,6 +91,8 @@ export default function CreatePage() {
     setSelectedInsightId('')
     setSelectedInsightDetail(null)
     setSelectedInsight(null)
+    // 切换平台时重置选题方向选择
+    setSelectedTopicDirection('')
 
     // 自动调整目标平台设置
     setTargetPlatforms({
@@ -104,6 +107,8 @@ export default function CreatePage() {
   const handleInsightSelect = useCallback(async (insightId: string, insightDetail?: any) => {
     setSelectedInsightId(insightId)
     setSelectedInsightDetail(insightDetail)
+    // 切换洞察时重置选题方向选择
+    setSelectedTopicDirection('')
 
     if (insightDetail && insightDetail.structuredTopicInsights?.length > 0) {
       // 默认选择第一个洞察
@@ -120,6 +125,12 @@ export default function CreatePage() {
     }
 
     setErrorMessage('')
+  }, [])
+
+  // 选题方向选择处理
+  const handleTopicDirectionSelect = useCallback((topicDirection: string) => {
+    setSelectedTopicDirection(topicDirection)
+    setErrorMessage('') // 清除之前的错误信息
   }, [])
 
   // 具体洞察选择处理
@@ -187,6 +198,12 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
       return
     }
 
+    // 如果选择了洞察报告，验证是否选择了选题方向
+    if (selectedInsight && !selectedTopicDirection.trim()) {
+      setErrorMessage('请选择一个选题方向')
+      return
+    }
+
     setIsCreating(true)
     setCreationStep(0)
     setShowPreview(false)
@@ -202,6 +219,8 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
         length: articleLength,
         platforms: targetPlatforms,
         customInstructions: customInstructions.trim() || undefined,
+        // 选题方向
+        topicDirection: selectedTopicDirection.trim() || undefined,
         // 配图参数
         enableImages,
         imageDensity,
@@ -296,6 +315,8 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 onInsightSelect={handleInsightSelect}
                 disabled={isCreating}
                 platform={selectedPlatform}
+                selectedTopicDirection={selectedTopicDirection}
+                onTopicDirectionSelect={handleTopicDirectionSelect}
               />
 
               <div className="text-center text-gray-400 text-sm my-4">或</div>

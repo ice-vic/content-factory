@@ -38,6 +38,8 @@ export interface GenerationParameters {
     xiaohongshu: boolean;
   };
   customInstructions?: string;
+  // 选题方向
+  topicDirection?: string;
   // 配图功能参数
   enableImages?: boolean;
   imageDensity?: 'sparse' | 'medium' | 'dense';
