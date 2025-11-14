@@ -43,14 +43,43 @@ export async function GET(request: NextRequest) {
     // 格式化数据
     const formattedInsights = recentHistories.map(history => {
       let structuredTopicInsightsCount = 0;
-      if (history.analysisResult?.aiGeneratedInsights) {
+      let insightsSource = 'none';
+
+      // 按优先级检查不同字段中的洞察数据
+      if (history.analysisResult?.structuredTopicInsights) {
+        try {
+          const insights = JSON.parse(history.analysisResult.structuredTopicInsights);
+          structuredTopicInsightsCount = Array.isArray(insights) ? insights.length : 0;
+          insightsSource = 'structuredTopicInsights';
+          console.log(`🔍 记录${history.id} (${history.keyword}): 从structuredTopicInsights解析出${structuredTopicInsightsCount}个洞察`);
+        } catch (error) {
+          console.error(`解析structuredTopicInsights失败 (${history.keyword}):`, error);
+        }
+      }
+
+      if (structuredTopicInsightsCount === 0 && history.analysisResult?.aiGeneratedInsights) {
         try {
           const insights = JSON.parse(history.analysisResult.aiGeneratedInsights);
           structuredTopicInsightsCount = Array.isArray(insights) ? insights.length : 0;
+          insightsSource = 'aiGeneratedInsights';
+          console.log(`🔍 记录${history.id} (${history.keyword}): 从aiGeneratedInsights解析出${structuredTopicInsightsCount}个洞察`);
         } catch (error) {
-          console.error('解析洞察数据失败:', error);
+          console.error(`解析aiGeneratedInsights失败 (${history.keyword}):`, error);
         }
       }
+
+      if (structuredTopicInsightsCount === 0 && history.analysisResult?.aiInsights) {
+        try {
+          const insights = JSON.parse(history.analysisResult.aiInsights);
+          structuredTopicInsightsCount = Array.isArray(insights) ? insights.length : 0;
+          insightsSource = 'aiInsights';
+          console.log(`🔍 记录${history.id} (${history.keyword}): 从aiInsights解析出${structuredTopicInsightsCount}个洞察`);
+        } catch (error) {
+          console.error(`解析aiInsights失败 (${history.keyword}):`, error);
+        }
+      }
+
+      console.log(`📊 记录${history.id} (${history.keyword}, ${history.type}): 平台=${history.type}, 洞察数量=${structuredTopicInsightsCount}, 数据源=${insightsSource}`);
 
       return {
         id: history.id.toString(),
@@ -59,7 +88,15 @@ export async function GET(request: NextRequest) {
         completedAt: history.searchTime.toISOString(),
         status: history.status,
         totalArticles: history.articleCount || 0,
-        structuredTopicInsightsCount
+        structuredTopicInsightsCount,
+        // 添加调试信息
+        debugInfo: {
+          platform: history.type,
+          insightsSource,
+          hasStructuredTopicInsights: !!history.analysisResult?.structuredTopicInsights,
+          hasAiGeneratedInsights: !!history.analysisResult?.aiGeneratedInsights,
+          hasAiInsights: !!history.analysisResult?.aiInsights
+        }
       };
     });
 

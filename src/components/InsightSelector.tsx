@@ -244,9 +244,24 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
         <div className="text-center py-4 text-gray-500">
           <Wand2Icon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
           <p className="text-sm">
-            {showAllHistory ? '暂无任何可用的洞察历史' : '12小时内暂无可用的洞察历史'}
+            {platform
+              ? `${platform === 'wechat' ? '公众号' : '小红书'}平台暂无洞察历史`
+              : showAllHistory
+              ? '暂无任何可用的洞察历史'
+              : '12小时内暂无可用的洞察历史'
+            }
           </p>
-          <p className="text-xs mt-1">请先在选题分析页面生成洞察报告</p>
+          <p className="text-xs mt-1">
+            {platform
+              ? `请先进行${platform === 'wechat' ? '公众号' : '小红书'}分析来生成洞察报告`
+              : '请先在选题分析页面生成洞察报告'
+            }
+          </p>
+          {platform && (
+            <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+              💡 提示：已选择{platform === 'wechat' ? '公众号' : '小红书'}平台，将只显示该平台的数据
+            </div>
+          )}
         </div>
       )}
 
