@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { HistoryIcon, XIcon, ExternalLinkIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react'
 
 interface HistoryItem {
@@ -22,9 +23,32 @@ interface HistoryModalProps {
 }
 
 export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
+  const router = useRouter()
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 处理查看详情
+  const handleViewDetail = (recordId: string) => {
+    // 根据类型跳转到对应的详情页面
+    if (type === 'wechat') {
+      router.push(`/analysis/history/${recordId}`)
+    } else {
+      router.push(`/xiaohongshu/history/${recordId}`)
+    }
+    onClose() // 关闭弹窗
+  }
+
+  // 处理重新分析
+  const handleReanalyze = (keyword: string, params: any) => {
+    // 根据类型跳转到对应的分析页面，并预填充参数
+    if (type === 'wechat') {
+      router.push(`/analysis?keyword=${encodeURIComponent(keyword)}&return=true`)
+    } else {
+      router.push(`/xiaohongshu?keyword=${encodeURIComponent(keyword)}&return=true`)
+    }
+    onClose() // 关闭弹窗
+  }
 
   // 获取历史记录
   useEffect(() => {
@@ -39,6 +63,11 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
 
     try {
       const response = await fetch(`/api/history?type=${type}&limit=20&offset=0`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
 
       if (data.success) {
@@ -47,7 +76,8 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
         setError(data.error || '获取历史记录失败')
       }
     } catch (err) {
-      setError('网络错误，请稍后重试')
+      console.error('History fetch error:', err)
+      setError(`网络错误: ${err instanceof Error ? err.message : '请稍后重试'}`)
     } finally {
       setLoading(false)
     }
@@ -195,12 +225,14 @@ export function HistoryModal({ isOpen, onClose, type }: HistoryModalProps) {
 
                       <div className="flex items-center space-x-2 ml-4">
                         <button
+                          onClick={() => handleViewDetail(item.id)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="查看详情"
                         >
                           <ExternalLinkIcon className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => handleReanalyze(item.keyword, item.params)}
                           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                           title="重新分析"
                         >

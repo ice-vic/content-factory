@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// Global Prisma instance to avoid connection issues in development
+let prisma: any
+
+try {
+  const { PrismaClient } = require('@prisma/client')
+  prisma = new PrismaClient()
+} catch (error) {
+  console.error('Failed to initialize Prisma client:', error)
+  prisma = null
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if Prisma client is available
+    if (!prisma) {
+      return NextResponse.json({
+        success: false,
+        error: '数据库连接不可用，请稍后重试'
+      }, { status: 500 })
+    }
+
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') as 'wechat' | 'xiaohongshu' | null
     const page = parseInt(searchParams.get('page') || '1')
@@ -89,11 +105,28 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('获取历史记录失败:', error)
+
+    // Provide more specific error messages
+    let errorMessage = '获取历史记录失败'
+    if (error instanceof Error) {
+      if (error.message.includes('database') || error.message.includes('ENOTFOUND')) {
+        errorMessage = '数据库连接失败，请稍后重试'
+      } else {
+        errorMessage = `获取历史记录失败: ${error.message}`
+      }
+    }
+
     return NextResponse.json(
-      { success: false, error: '获取历史记录失败' },
+      { success: false, error: errorMessage },
       { status: 500 }
     )
   } finally {
-    await prisma.$disconnect()
+    try {
+      if (prisma && typeof prisma.$disconnect === 'function') {
+        await prisma.$disconnect()
+      }
+    } catch (disconnectError) {
+      console.error('Failed to disconnect from database:', disconnectError)
+    }
   }
 }

@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Navigation from '@/components/Navigation'
+import { AnalysisResultDisplay } from '@/components/AnalysisResultDisplay'
+import { HistoryModal } from '@/components/HistoryModal'
+import { StructuredTopicInsights } from '@/components/StructuredTopicInsights'
 import { InsightList } from '@/components/InsightCard'
 import ArticleList from '@/components/ArticleList'
 import { ReadDistributionChart } from '@/components/ReadDistributionChart'
 import { PublishTimeAnalysis } from '@/components/PublishTimeAnalysis'
-import { StructuredTopicInsights } from '@/components/StructuredTopicInsights'
-import { HistoryModal } from '@/components/HistoryModal'
 import {
   SearchIcon,
   RefreshCwIcon,
