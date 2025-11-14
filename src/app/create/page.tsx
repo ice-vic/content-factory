@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Navigation from '@/components/Navigation'
 import InsightSelector from '@/components/InsightSelector'
 import KeywordInsightViewer from '@/components/KeywordInsightViewer'
+import PlatformSelector from '@/components/PlatformSelector'
 import {
   PenToolIcon,
   Wand2Icon,
@@ -24,6 +25,7 @@ import {
 import { generateArticle, recommendParameters } from '@/services/contentService'
 
 export default function CreatePage() {
+  const [selectedPlatform, setSelectedPlatform] = useState<'wechat' | 'xiaohongshu' | null>(null)
   const [selectedInsightId, setSelectedInsightId] = useState('')
   const [selectedInsightDetail, setSelectedInsightDetail] = useState<any>(null)
   const [selectedInsight, setSelectedInsight] = useState<any>(null)
@@ -80,6 +82,23 @@ export default function CreatePage() {
     { phase: 'content', message: '正在撰写文章内容...', duration: 8000 },
     { phase: 'formatting', message: '正在格式化文章...', duration: 2000 }
   ]
+
+  // 平台选择处理
+  const handlePlatformChange = useCallback((platform: 'wechat' | 'xiaohongshu') => {
+    setSelectedPlatform(platform)
+    // 切换平台时清除已选择的洞察
+    setSelectedInsightId('')
+    setSelectedInsightDetail(null)
+    setSelectedInsight(null)
+
+    // 自动调整目标平台设置
+    setTargetPlatforms({
+      wechat: platform === 'wechat',
+      xiaohongshu: platform === 'xiaohongshu'
+    })
+
+    setErrorMessage('')
+  }, [])
 
   // 洞察选择处理
   const handleInsightSelect = useCallback(async (insightId: string, insightDetail?: any) => {
@@ -159,6 +178,10 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
   }
 
   const handleStartCreation = async () => {
+    if (!selectedPlatform) {
+      setErrorMessage('请先选择内容平台')
+      return
+    }
     if (!selectedInsight && !customTopic.trim()) {
       setErrorMessage('请选择洞察报告或输入自定义主题')
       return
@@ -247,6 +270,20 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
         <div className="grid lg:grid-cols-3 gap-8">
           {/* 左侧：洞察选择和创作参数设置 */}
           <div className="lg:col-span-1 space-y-6">
+            {/* 平台选择 */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                <SettingsIcon className="w-5 h-5 text-primary-600" />
+                <span>平台选择</span>
+              </h3>
+
+              <PlatformSelector
+                selectedPlatform={selectedPlatform}
+                onPlatformChange={handlePlatformChange}
+                disabled={isCreating}
+              />
+            </div>
+
             {/* 洞察选择 */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
@@ -258,6 +295,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 selectedInsight={selectedInsightId}
                 onInsightSelect={handleInsightSelect}
                 disabled={isCreating}
+                platform={selectedPlatform}
               />
 
               <div className="text-center text-gray-400 text-sm my-4">或</div>
@@ -502,7 +540,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
             {/* 开始创作按钮 */}
             <button
               onClick={handleStartCreation}
-              disabled={(!selectedInsight && !customTopic.trim()) || isCreating}
+              disabled={!selectedPlatform || (!selectedInsight && !customTopic.trim()) || isCreating}
               className="btn btn-primary w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCreating ? (
@@ -705,13 +743,13 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">开始创作您的第一篇文章</h3>
                 <p className="text-gray-500 mb-6">
-                  选择洞察报告或输入自定义主题，设置创作参数，点击"开始创作"即可
+                  选择内容平台，选择洞察报告或输入自定义主题，设置创作参数，点击"开始创作"即可
                 </p>
                 <div className="text-sm text-gray-400">
-                  <p>🎯 基于12小时内的洞察报告智能创作</p>
+                  <p>🎯 基于历史洞察报告智能创作</p>
+                  <p>📱 支持公众号和小红书平台</p>
                   <p>🔍 实时查看关键词分析和选题洞察</p>
                   <p>✨ AI自动推荐最佳创作参数</p>
-                  <p>⚡ 支持多种风格和平台适配</p>
                 </div>
               </div>
             )}

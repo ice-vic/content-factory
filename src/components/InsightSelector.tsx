@@ -8,9 +8,10 @@ interface InsightSelectorProps {
   selectedInsight: string;
   onInsightSelect: (insightId: string, insightDetail?: any) => void;
   disabled?: boolean;
+  platform?: 'wechat' | 'xiaohongshu' | null; // 添加平台参数
 }
 
-export default function InsightSelector({ selectedInsight, onInsightSelect, disabled = false }: InsightSelectorProps) {
+export default function InsightSelector({ selectedInsight, onInsightSelect, disabled = false, platform = null }: InsightSelectorProps) {
   const [insights, setInsights] = useState<InsightHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState<string | null>(null);
@@ -19,13 +20,31 @@ export default function InsightSelector({ selectedInsight, onInsightSelect, disa
 
   useEffect(() => {
     loadInsightHistory();
-  }, [showAllHistory]);
+  }, [showAllHistory, platform]);
 
   const loadInsightHistory = async () => {
     try {
       setLoading(true);
-      const history = showAllHistory ? await getAllInsightHistory() : await getRecentInsightHistory();
-      setInsights(history);
+      // 构建API URL，添加平台参数
+      const params = new URLSearchParams();
+      if (!showAllHistory) {
+        params.append('hours', '12'); // 默认12小时
+      }
+      if (platform) {
+        params.append('platform', platform);
+      }
+
+      const response = await fetch(`/api/insights/history?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`API错误: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setInsights(result.data || []);
+      } else {
+        throw new Error(result.error || '获取洞察历史失败');
+      }
     } catch (error) {
       console.error('加载洞察历史失败:', error);
       // 失败时设置空数组，避免界面卡住

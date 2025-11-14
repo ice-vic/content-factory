@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
     // 获取查询参数
     const { searchParams } = new URL(request.url);
     const hoursParam = searchParams.get('hours');
+    const platformParam = searchParams.get('platform');
     const hours = hoursParam ? parseInt(hoursParam, 10) : 12; // 默认12小时
+    const platform = platformParam || null; // 平台筛选: 'wechat', 'xiaohongshu', null表示全部
 
     // 计算时间范围，hours=0表示获取全部记录
     let whereCondition: any = {
@@ -20,6 +22,11 @@ export async function GET(request: NextRequest) {
       whereCondition.searchTime = {
         gte: timeAgo
       };
+    }
+
+    // 添加平台筛选
+    if (platform) {
+      whereCondition.type = platform; // 假设数据库中有type字段存储平台类型
     }
 
     // 从数据库获取分析记录
