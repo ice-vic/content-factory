@@ -44,7 +44,8 @@ export default function CreatePage() {
   const [imageDensity, setImageDensity] = useState<'sparse' | 'medium' | 'dense'>('medium')
   const [imageStyle, setImageStyle] = useState<'business' | 'lifestyle' | 'illustration' | 'data-viz' | 'photorealistic'>('photorealistic')
   const [imagePosition, setImagePosition] = useState<'after-paragraph' | 'after-section' | 'mixed'>('after-paragraph')
-  const [maxImages, setMaxImages] = useState(5)
+  const [maxImages, setMaxImages] = useState(3)
+  const [smartImageCount, setSmartImageCount] = useState(true) // 智能调整图片数量
 
   const [isCreating, setIsCreating] = useState(false)
   const [creationStep, setCreationStep] = useState(0)
@@ -102,6 +103,26 @@ export default function CreatePage() {
 
     setErrorMessage('')
   }, [])
+
+  // 文章长度变化时，智能调整配图数量
+  const handleArticleLengthChange = useCallback((length: 'short' | 'medium' | 'long') => {
+    setArticleLength(length)
+
+    // 根据文章长度智能调整最大图片数
+    let suggestedMaxImages = 3
+    if (length === 'short') {
+      suggestedMaxImages = 2 // 短篇最多2张图
+    } else if (length === 'medium') {
+      suggestedMaxImages = 4 // 中篇最多4张图
+    } else {
+      suggestedMaxImages = 6 // 长篇最多6张图
+    }
+
+    // 如果当前设置的图片数超过建议值，自动调整
+    if (maxImages > suggestedMaxImages) {
+      setMaxImages(suggestedMaxImages)
+    }
+  }, [maxImages])
 
   // 洞察选择处理
   const handleInsightSelect = useCallback(async (insightId: string, insightDetail?: any) => {
@@ -226,7 +247,8 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
         imageDensity,
         imageStyle,
         imagePosition,
-        maxImages: enableImages ? maxImages : 0
+        maxImages: enableImages ? maxImages : 0,
+        smartImageCount
       }
 
       // 逐步执行创作流程
@@ -401,7 +423,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                           name="length"
                           value={option.value}
                           checked={articleLength === option.value}
-                          onChange={(e) => setArticleLength(e.target.value as any)}
+                          onChange={(e) => handleArticleLengthChange(e.target.value as any)}
                           className="text-primary-600"
                         />
                         <div>
@@ -518,14 +540,35 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           最大图片数量
                         </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={maxImages}
-                          onChange={(e) => setMaxImages(parseInt(e.target.value) || 5)}
-                          className="input text-sm"
-                        />
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="smartImageCount"
+                              checked={smartImageCount}
+                              onChange={(e) => setSmartImageCount(e.target.checked)}
+                              className="text-primary-600"
+                            />
+                            <label htmlFor="smartImageCount" className="text-sm text-gray-600">
+                              智能调整数量（推荐）
+                            </label>
+                          </div>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={maxImages}
+                            onChange={(e) => setMaxImages(parseInt(e.target.value) || 5)}
+                            className="input text-sm"
+                            disabled={smartImageCount}
+                            placeholder={smartImageCount ? "将根据文章长度智能调整" : "手动设置图片数量"}
+                          />
+                          {smartImageCount && (
+                            <p className="text-xs text-gray-500">
+                              系统将根据文章长度和内容自动调整最合适的图片数量
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -685,42 +728,62 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
 
                   {/* 文章内容 */}
                   <div className="prose max-w-none">
-                    {generatedArticle.content.split('\n').map((paragraph, index) => {
-                      if (paragraph.startsWith('#')) {
-                        const level = paragraph.match(/^#+/)?.[0].length || 1
-                        const text = paragraph.replace(/^#+\s*/, '').trim()
-                        const HeadingTag = `h${Math.min(level + 1, 6)}` as keyof JSX.IntrinsicElements
-                        return (
-                          <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
-                            {text}
-                          </HeadingTag>
-                        )
+                    {(() => {
+                      const content = generatedArticle.content;
+
+                      // 如果内容包含HTML图片，直接渲染整个内容
+                      if (content.includes('class="generated-image"')) {
+                        return <div dangerouslySetInnerHTML={{ __html: content }} />;
                       }
-                      if (paragraph.includes('![')) {
-                        const match = paragraph.match(/!\[(.*?)\]\((.*?)\)/)
-                        if (match) {
-                          const altText = match[1] || '生成的图片'
+
+                      // 否则使用原来的分割逻辑处理Markdown
+                      const parts = content.split(/(\n+#{1,6}\s+.*\n*|\n+)/);
+
+                      return parts.map((part, index) => {
+                        if (!part || part.match(/^\n+$/)) return null;
+
+                        // 处理标题
+                        const titleMatch = part.match(/^(#{1,6})\s+(.+)$/m);
+                        if (titleMatch) {
+                          const level = titleMatch[1].length;
+                          const text = titleMatch[2].trim();
+                          const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
+                          return (
+                            <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
+                              {text}
+                            </HeadingTag>
+                          );
+                        }
+
+                        // 处理Markdown图片
+                        const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
+                        if (imageMatch) {
+                          const altText = imageMatch[1] || '生成的图片';
                           return (
                             <div key={index} className="my-6">
                               <img
-                                src={match[2]}
+                                src={imageMatch[2]}
                                 alt={altText}
                                 className="w-full rounded-lg shadow-sm"
                               />
                               <p className="text-sm text-gray-500 mt-2 text-center">{altText}</p>
                             </div>
-                          )
+                          );
                         }
-                      }
-                      if (paragraph.trim()) {
-                        return (
-                          <p key={index} className="text-gray-700 mb-4 leading-relaxed">
-                            {paragraph}
-                          </p>
-                        )
-                      }
-                      return null
-                    })}
+
+                        // 处理普通段落
+                        const trimmedPart = part.trim();
+                        if (trimmedPart) {
+                          return (
+                            <p key={index} className="text-gray-700 mb-4 leading-relaxed">
+                              {trimmedPart}
+                            </p>
+                          );
+                        }
+
+                        return null;
+                      });
+                    })()}
                   </div>
 
                   {/* 操作按钮 */}
