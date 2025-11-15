@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wand2Icon, ClockIcon, FileTextIcon, Trash2Icon, EditIcon, HistoryIcon } from 'lucide-react';
+import { Wand2Icon, ClockIcon, FileTextIcon, Trash2Icon, HistoryIcon } from 'lucide-react';
 import { getRecentInsightHistory, getAllInsightHistory, deleteInsightHistory, updateInsightHistory, type InsightHistory } from '@/services/contentService';
 
 interface InsightSelectorProps {
@@ -23,9 +23,10 @@ export default function InsightSelector({
 }: InsightSelectorProps) {
   const [insights, setInsights] = useState<InsightHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDetails, setShowDetails] = useState<string | null>(null);
+  // 移除手动展开控制，改为基于选中状态自动展开
   const [insightDetails, setInsightDetails] = useState<Map<string, any>>(new Map());
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState<string | null>(null); // 防止重复加载
 
   useEffect(() => {
     loadInsightHistory();
@@ -68,28 +69,48 @@ export default function InsightSelector({
       onInsightSelect('');
       // 清空选题方向选择
       onTopicDirectionSelect?.('');
+      setLoadingDetail(null);
       return;
     }
 
-    // 如果还没有加载详情，则先加载
-    if (!insightDetails.has(insightId)) {
-      try {
-        const response = await fetch(`/api/insights/detail/${insightId}`);
-        if (!response.ok) {
-          throw new Error(`API错误: ${response.status} ${response.statusText}`);
-        }
-        const result = await response.json();
-        if (result.success) {
-          setInsightDetails(prev => new Map(prev.set(insightId, result.data)));
-          onInsightSelect(insightId, result.data);
-        } else {
-          console.error('洞察详情API返回失败:', result);
-        }
-      } catch (error) {
-        console.error('加载洞察详情失败:', error);
-      }
-    } else {
+    // 如果已经有详情数据，直接使用
+    if (insightDetails.has(insightId)) {
       onInsightSelect(insightId, insightDetails.get(insightId));
+      return;
+    }
+
+    // 防止重复请求
+    if (loadingDetail === insightId) {
+      return;
+    }
+
+    setLoadingDetail(insightId);
+
+    try {
+      const response = await fetch(`/api/insights/detail/${insightId}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API错误: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setInsightDetails(prev => new Map(prev.set(insightId, result.data)));
+        onInsightSelect(insightId, result.data);
+      } else {
+        console.error('洞察详情API返回失败:', result);
+        throw new Error(result.error || '获取洞察详情失败');
+      }
+    } catch (error) {
+      console.error('加载洞察详情失败:', error);
+      // 可以选择是否要显示错误给用户
+      // setErrorMessage('加载洞察详情失败，请重试');
+    } finally {
+      setLoadingDetail(null);
     }
   };
 
@@ -205,15 +226,8 @@ export default function InsightSelector({
 
             <div className="flex space-x-1">
               <button
-                onClick={() => setShowDetails(showDetails === selectedInfo.id ? null : selectedInfo.id)}
-                className="text-blue-600 hover:text-blue-800 p-1"
-                title="查看详情"
-              >
-                <EditIcon className="w-4 h-4" />
-              </button>
-              <button
                 onClick={(e) => handleDeleteInsight(selectedInfo.id, e)}
-                className="text-red-600 hover:text-red-800 p-1"
+                className="text-red-600 hover:text-red-800 p-2 bg-white rounded-lg"
                 title="删除记录"
               >
                 <Trash2Icon className="w-4 h-4" />
@@ -221,15 +235,15 @@ export default function InsightSelector({
             </div>
           </div>
 
-          {/* 展开的详细信息 */}
-          {showDetails === selectedInfo.id && insightDetails.has(selectedInfo.id) && (
-            <div className="mt-4 pt-4 border-t border-blue-200 space-y-4">
+          {/* 自动展开的详细信息 */}
+          {selectedInfo && insightDetails.has(selectedInfo.id) && (
+            <div className="mt-4 pt-4 border-t border-blue-200 space-y-6 animate-in slide-in-from-top-2 duration-300">
               {/* 推荐选题方向 - 单选功能 */}
               {onTopicDirectionSelect && (
-                <div className="text-sm text-blue-800">
-                  <h5 className="font-medium mb-3 flex items-center">
-                    <span className="text-red-500 mr-1">*</span>
-                    选择选题方向：
+                <div>
+                  <h5 className="font-semibold text-blue-900 mb-4 flex items-center text-base">
+                    <span className="text-red-500 mr-2">*</span>
+                    选择选题方向
                   </h5>
                   {(() => {
                     const detail = insightDetails.get(selectedInfo.id);
@@ -238,22 +252,24 @@ export default function InsightSelector({
 
                     if (recommendedTopics.length === 0) {
                       return (
-                        <div className="text-blue-700 text-sm bg-blue-50 p-3 rounded-lg">
-                          暂无推荐选题方向
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                          <Wand2Icon className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                          <p className="text-blue-700 text-sm">暂无推荐选题方向</p>
                         </div>
                       );
                     }
 
                     return (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {recommendedTopics.map((topic: string, index: number) => (
-                          <label
+                          <div
                             key={index}
+                            onClick={() => handleTopicDirectionSelect(topic)}
                             className={`
-                              flex items-start space-x-3 p-3 rounded-lg cursor-pointer transition-all
+                              flex items-start space-x-3 p-4 rounded-lg cursor-pointer transition-all border-2
                               ${selectedTopicDirection === topic
-                                ? 'bg-blue-100 border border-blue-300'
-                                : 'bg-white border border-gray-200 hover:bg-gray-50'
+                                ? 'bg-blue-50 border-blue-400 shadow-sm'
+                                : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
                               }
                             `}
                           >
@@ -263,27 +279,41 @@ export default function InsightSelector({
                               value={topic}
                               checked={selectedTopicDirection === topic}
                               onChange={() => handleTopicDirectionSelect(topic)}
-                              className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                              className="sr-only" // 隐藏radio input，只保留功能
                             />
-                            <span className={`
-                              text-sm leading-relaxed
-                              ${selectedTopicDirection === topic ? 'text-blue-900 font-medium' : 'text-gray-700'}
-                            `}>
-                              {topic}
-                            </span>
-                          </label>
+                            <div className="flex items-center justify-center mt-0.5">
+                              {selectedTopicDirection === topic ? (
+                                <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-500 flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className={`
+                                text-sm leading-relaxed block
+                                ${selectedTopicDirection === topic ? 'text-blue-900 font-semibold' : 'text-gray-700'}
+                              `}>
+                                {topic}
+                              </span>
+                              {selectedTopicDirection === topic && (
+                                <span className="text-xs text-blue-600 mt-1 block">已选择此方向</span>
+                              )}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     );
                   })()}
 
                   {selectedTopicDirection && (
-                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center space-x-2 text-green-800">
-                        <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                           <div className="w-2 h-1 bg-white transform rotate-45 translate-y-0.5"></div>
                         </div>
-                        <span className="text-sm font-medium">已选择：{selectedTopicDirection}</span>
+                        <span className="text-sm font-medium">已确认选题方向：{selectedTopicDirection}</span>
                       </div>
                     </div>
                   )}
@@ -291,19 +321,27 @@ export default function InsightSelector({
               )}
 
               {/* 关键词列表 */}
-              <div className="text-sm text-blue-800">
-                <h5 className="font-medium mb-2">关键词列表：</h5>
-                <div className="flex flex-wrap gap-1">
-                  {insightDetails.get(selectedInfo.id)?.allKeywords?.slice(0, 10).map((keyword: string, index: number) => (
-                    <span key={index} className="bg-white px-2 py-1 rounded text-xs">
-                      {keyword}
-                    </span>
-                  ))}
-                  {insightDetails.get(selectedInfo.id)?.allKeywords?.length > 10 && (
-                    <span className="text-xs text-blue-600">
-                      +{insightDetails.get(selectedInfo.id).allKeywords.length - 10}个...
-                    </span>
-                  )}
+              <div>
+                <h5 className="font-semibold text-blue-900 mb-3 text-base flex items-center">
+                  <FileTextIcon className="w-4 h-4 mr-2" />
+                  分析关键词
+                </h5>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex flex-wrap gap-2">
+                    {insightDetails.get(selectedInfo.id)?.allKeywords?.slice(0, 15).map((keyword: string, index: number) => (
+                      <span key={index} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs border border-blue-200">
+                        {keyword}
+                      </span>
+                    ))}
+                    {insightDetails.get(selectedInfo.id)?.allKeywords?.length > 15 && (
+                      <span className="text-xs text-blue-600 px-2 py-1 bg-blue-100 rounded-full">
+                        +{insightDetails.get(selectedInfo.id).allKeywords.length - 15}个关键词
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 text-xs text-gray-500">
+                    共分析 {insightDetails.get(selectedInfo.id)?.allKeywords?.length || 0} 个相关关键词
+                  </div>
                 </div>
               </div>
             </div>

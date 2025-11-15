@@ -9,19 +9,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const hoursParam = searchParams.get('hours');
     const platformParam = searchParams.get('platform');
-    const hours = hoursParam ? parseInt(hoursParam, 10) : 12; // 默认12小时
+
+    // 修复逻辑：如果hours参数不存在，表示查询全部历史记录
+    const hours = hoursParam ? parseInt(hoursParam, 10) : null; // null表示全部历史
     const platform = platformParam || null; // 平台筛选: 'wechat', 'xiaohongshu', null表示全部
 
-    // 计算时间范围，hours=0表示获取全部记录
+    // 计算时间范围，hours=null或hours=0表示获取全部记录
     let whereCondition: any = {
       status: 'completed'
     };
 
-    if (hours > 0) {
+    // 只有当hours存在且大于0时才添加时间过滤
+    if (hours && hours > 0) {
       const timeAgo = new Date(Date.now() - hours * 60 * 60 * 1000);
       whereCondition.searchTime = {
         gte: timeAgo
       };
+      console.log(`🔍 查询最近 ${hours} 小时的历史记录，时间范围: ${timeAgo.toISOString()}`);
+    } else {
+      console.log(`🔍 查询全部历史记录（无时间限制）`);
     }
 
     // 添加平台筛选
@@ -100,10 +106,17 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    console.log(`📊 查询结果: 找到 ${formattedInsights.length} 条历史记录`);
+
     return NextResponse.json({
       success: true,
       data: formattedInsights,
-      count: formattedInsights.length
+      count: formattedInsights.length,
+      queryInfo: {
+        hours: hours || 'all',
+        platform: platform || 'all',
+        queryType: hours && hours > 0 ? `最近${hours}小时` : '全部历史'
+      }
     });
 
   } catch (error) {
