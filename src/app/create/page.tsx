@@ -71,6 +71,10 @@ export default function CreatePage() {
   const [editableContent, setEditableContent] = useState('')
   const [editableTitle, setEditableTitle] = useState('')
 
+  // 图片重新生成状态管理
+  const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(new Set())
+  const [regenerateErrors, setRegenerateErrors] = useState<Map<string, string>>(new Map())
+
   const styleOptions = [
     { value: 'professional', label: '专业严谨', desc: '适合正式场合，内容严谨专业' },
     { value: 'casual', label: '轻松活泼', desc: '适合日常分享，语言轻松易懂' },
@@ -324,6 +328,198 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
     setIsEditing(false)
     console.log('✅ 文章编辑已保存')
   }
+
+  // 单张图片重新生成函数
+  const regenerateSingleImage = async (imageId: string, description: string, style?: string) => {
+    if (regeneratingImages.has(imageId)) {
+      console.log(`⚠️ 图片 ${imageId} 正在重新生成中，跳过重复请求`);
+      return;
+    }
+
+    console.log('🔄 开始重新生成图片:', {
+      imageId,
+      description,
+      style,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      // 添加到正在重新生成状态
+      setRegeneratingImages(prev => new Set(Array.from(prev).concat([imageId])));
+      // 清除之前的错误
+      setRegenerateErrors(prev => {
+        const newMap = new Map(Array.from(prev.entries()));
+        newMap.delete(imageId);
+        return newMap;
+      });
+
+      // 显示加载状态
+      const imageElement = document.querySelector(`[data-image-id="${imageId}"]`) as HTMLElement;
+      if (imageElement) {
+        const buttonElement = imageElement.querySelector('.image-regenerate-controls button') as HTMLButtonElement;
+        if (buttonElement) {
+          buttonElement.textContent = '🔄 生成中...';
+          buttonElement.disabled = true;
+          buttonElement.style.background = '#9ca3af';
+          buttonElement.style.cursor = 'not-allowed';
+        }
+      }
+
+      // 调用重新生成API
+      const response = await fetch('/api/content/regenerate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageId,
+          description,
+          style: style || 'photorealistic'
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ 图片重新生成成功:', {
+          imageId,
+          hasHtml: !!result.data.html,
+          isFallback: !!result.data.fallback,
+          generationTime: result.data.generationTime
+        });
+
+        // 更新页面上的图片HTML - 使用React状态更新方式
+        if (result.data.html) {
+          try {
+            // 解析新HTML获取图片URL
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = result.data.html;
+            const newImageElement = tempDiv.firstChild;
+
+            if (newImageElement) {
+              const newImg = newImageElement.querySelector('img');
+              if (newImg && newImg.src) {
+                // 更新文章内容中的图片URL
+                const newImageUrl = newImg.src;
+                console.log('🔍 准备更新文章内容中的图片URL:', {
+                  imageId,
+                  newImageUrl: newImageUrl.substring(0, 50) + '...'
+                });
+
+                // 使用React状态更新 - 更新生成的文章内容
+                setGeneratedArticle(prev => {
+                  if (!prev) return prev;
+
+                  // 在文章内容中查找并替换对应的图片
+                  const updatedContent = prev.content.replace(
+                    new RegExp(`<div class="generated-image[^>]*data-image-id="${imageId}"[^>]*>[\\s\\S]*?<img[^>]*src="[^"]*"[^>]*>`, 'g'),
+                    (match) => {
+                      // 保留原有的div结构和属性，只更新img的src
+                      const divMatch = match.match(/^(<div[^>]*data-image-id="${imageId}"[^>]*>)/);
+                      const imgMatch = match.match(/(<img[^>]*src=")[^"]*("[^>]*>)/);
+
+                      if (divMatch && imgMatch) {
+                        const imgRest = match.match(/src="[^"]*"([^>]*)>$/);
+                        const newImgTag = `<img${imgRest ? imgRest[1] : ''}src="${newImageUrl}"${imgMatch[2]}`;
+                        return divMatch[1] + newImgTag;
+                      }
+                      return match;
+                    }
+                  );
+
+                  return {
+                    ...prev,
+                    content: updatedContent
+                  };
+                });
+
+                console.log('✅ 文章内容中的图片URL已更新');
+
+                // 强制重新渲染页面上的图片
+                setTimeout(() => {
+                  const imgElements = document.querySelectorAll(`[data-image-id="${imageId}"] img`);
+                  imgElements.forEach((img: any) => {
+                    // 强制刷新图片以绕过缓存
+                    const originalSrc = img.src;
+                    img.src = '';
+                    img.src = originalSrc + '?_force=' + Date.now();
+                  });
+                }, 100);
+
+              } else {
+                console.error('❌ 新HTML中未找到图片元素');
+              }
+            } else {
+              console.error('❌ 无法解析新图片HTML');
+            }
+          } catch (error) {
+            console.error('💥 图片更新失败:', error);
+            setRegenerateErrors(prev => new Map(Array.from(prev.entries()).concat([[imageId, '图片更新失败']])));
+          }
+        } else {
+          console.warn('⚠️ 图片重新生成响应异常:', result);
+          setRegenerateErrors(prev => new Map(Array.from(prev.entries()).concat([[imageId, '图片更新失败']])));
+        }
+
+      } else {
+        console.error('❌ 图片重新生成API失败:', {
+          imageId,
+          error: result.error,
+          details: result.details,
+          status: response.status
+        });
+
+        setRegenerateErrors(prev => new Map(Array.from(prev.entries()).concat([[imageId, result.error || '重新生成失败']])));
+
+        // 恢复按钮状态
+        if (imageElement) {
+          const buttonElement = imageElement.querySelector('.image-regenerate-controls button') as HTMLButtonElement;
+          if (buttonElement) {
+            buttonElement.textContent = '❌ 重试';
+            buttonElement.disabled = false;
+            buttonElement.style.background = '#ef4444';
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('💥 图片重新生成网络错误:', {
+        imageId,
+        error: error instanceof Error ? error.message : '未知错误',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
+      setRegenerateErrors(prev => new Map(Array.from(prev.entries()).concat([[imageId, '网络错误，请检查连接']])));
+
+      // 恢复按钮状态
+      const imageElement = document.querySelector(`[data-image-id="${imageId}"]`) as HTMLElement;
+      if (imageElement) {
+        const buttonElement = imageElement.querySelector('.image-regenerate-controls button') as HTMLButtonElement;
+        if (buttonElement) {
+          buttonElement.textContent = '❌ 重试';
+          buttonElement.disabled = false;
+          buttonElement.style.background = '#ef4444';
+        }
+      }
+
+    } finally {
+      // 从正在重新生成状态中移除
+      setRegeneratingImages(prev => {
+        const newArray = Array.from(prev).filter(id => id !== imageId);
+        return new Set(newArray);
+      });
+    }
+  };
+
+  // 将函数暴露到全局作用域，供HTML中的onclick调用
+  useEffect(() => {
+    (window as any).regenerateImage = regenerateSingleImage;
+
+    // 清理函数
+    return () => {
+      delete (window as any).regenerateImage;
+    };
+  }, [regenerateSingleImage]);
 
   return (
     <div className="min-h-screen bg-gray-50">

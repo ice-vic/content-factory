@@ -1528,6 +1528,18 @@ function generateImageHtml(image: GeneratedImage, placeholder: ImageDescription)
       ${cleanDescription}
     </p>
     ${additionalInfo}
+    <!-- 重新生成按钮容器 -->
+    <div class="image-regenerate-controls" style="text-align: center; margin-top: 8px;">
+      <button
+        onclick="regenerateImage('${image.id}', \`${cleanDescription.replace(/`/g, '\\`')}\`, '${image.style || ''}')"
+        style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin: 0 4px; transition: background-color 0.2s;"
+        onmouseover="this.style.background='#2563eb'"
+        onmouseout="this.style.background='#3b82f6'"
+        title="重新生成这张图片"
+      >
+        🔄 重新生成
+      </button>
+    </div>
   </div>`;
 }
 
