@@ -240,6 +240,14 @@ export async function POST(request: NextRequest) {
     // 如果没有图片生成，使用原始内容
     const finalContent = imageGenerationResult?.processedContent || parsedArticle.content;
 
+    console.log('🔍 API响应前检查:', {
+      finalContentLength: finalContent.length,
+      hasGeneratedImage: finalContent.includes('class="generated-image"'),
+      hasDataImageId: finalContent.includes('data-image-id='),
+      hasImgTag: finalContent.includes('<img src='),
+      contentPreview: finalContent.substring(0, 300) + '...'
+    });
+
     return NextResponse.json({
       success: true,
       data: {

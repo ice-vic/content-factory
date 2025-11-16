@@ -156,6 +156,15 @@ export async function generateArticle(
 
     const result = await response.json();
 
+    console.log('🔍 前端API响应检查:', {
+      success: result.success,
+      hasData: !!result.data,
+      hasArticle: !!result.data?.article,
+      contentLength: result.data?.article?.content?.length || 0,
+      hasGeneratedImage: result.data?.article?.content?.includes('class="generated-image') || false,
+      contentPreview: result.data?.article?.content?.substring(0, 200) + '...' || 'No content'
+    });
+
     // 处理不同的响应状态
     if (response.ok && result.success) {
       return {

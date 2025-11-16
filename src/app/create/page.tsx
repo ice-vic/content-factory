@@ -731,8 +731,23 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                     {(() => {
                       const content = generatedArticle.content;
 
+                      // 多重检测确保HTML图片存在
+                      const hasGeneratedImage =
+                        content.includes('class="generated-image"') ||
+                        content.includes('data-image-id=') ||
+                        content.includes('<img src=');
+
+                      console.log('🔍 前端HTML检测:', {
+                        hasGeneratedImage,
+                        contentLength: content.length,
+                        containsClass: content.includes('class="generated-image"'),
+                        containsDataId: content.includes('data-image-id='),
+                        containsImgTag: content.includes('<img src='),
+                        contentPreview: content.substring(0, 200) + '...'
+                      });
+
                       // 如果内容包含HTML图片，直接渲染整个内容
-                      if (content.includes('class="generated-image"')) {
+                      if (hasGeneratedImage) {
                         return <div dangerouslySetInnerHTML={{ __html: content }} />;
                       }
 

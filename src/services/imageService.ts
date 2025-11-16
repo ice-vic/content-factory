@@ -1506,8 +1506,18 @@ function generateImageHtml(image: GeneratedImage, placeholder: ImageDescription)
   }
 
   // 确保所有引号都是标准ASCII引号，避免中文引号混用
-  const cleanDescription = (image.description || '').replace(/[""]/g, '"');
-  const cleanUrl = image.url.replace(/[""]/g, '"');
+  // 注意：在HTML属性中，我们只需要避免破坏HTML结构的特殊字符
+  const cleanDescription = (image.description || '')
+    .replace(/[""]/g, '"')  // 替换中文引号为标准ASCII引号
+    .replace(/"/g, '"')     // 确保是标准ASCII引号
+    .replace(/</g, '&lt;')  // 只转义可能破坏HTML结构的字符
+    .replace(/>/g, '&gt;')
+    .replace(/&/g, '&amp;'); // 转义&符号
+
+  const cleanUrl = image.url
+    .replace(/[""]/g, '"')  // 替换中文引号
+    .replace(/"/g, '"');    // 确保是标准ASCII引号
+
   const cleanImageStyle = imageStyle.replace(/[""]/g, '"');
 
   return `<div class="${imageClass}" data-image-id="${image.id}" data-source="${image.source}">
