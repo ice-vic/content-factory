@@ -66,6 +66,11 @@ export default function CreatePage() {
   })
   const [errorMessage, setErrorMessage] = useState('')
 
+  // 编辑相关状态
+  const [isEditing, setIsEditing] = useState(false)
+  const [editableContent, setEditableContent] = useState('')
+  const [editableTitle, setEditableTitle] = useState('')
+
   const styleOptions = [
     { value: 'professional', label: '专业严谨', desc: '适合正式场合，内容严谨专业' },
     { value: 'casual', label: '轻松活泼', desc: '适合日常分享，语言轻松易懂' },
@@ -295,6 +300,29 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
   const handleRegenerate = () => {
     setShowPreview(false)
     handleStartCreation()
+  }
+
+  // 编辑功能处理函数
+  const handleStartEdit = () => {
+    setIsEditing(true)
+    setEditableTitle(generatedArticle.title)
+    setEditableContent(generatedArticle.content)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditableTitle('')
+    setEditableContent('')
+  }
+
+  const handleSaveEdit = () => {
+    setGeneratedArticle(prev => ({
+      ...prev,
+      title: editableTitle,
+      content: editableContent
+    }))
+    setIsEditing(false)
+    console.log('✅ 文章编辑已保存')
   }
 
   return (
@@ -701,15 +729,49 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 <div className="p-6">
                   {/* 文章标题 */}
                   <div className="mb-6">
-                    <input
-                      type="text"
-                      value={generatedArticle.title}
-                      onChange={(e) => setGeneratedArticle(prev => ({
-                        ...prev,
-                        title: e.target.value
-                      }))}
-                      className="text-2xl font-bold text-gray-900 w-full border-none outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
-                    />
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <input
+                          type="text"
+                          value={editableTitle}
+                          onChange={(e) => setEditableTitle(e.target.value)}
+                          className="text-2xl font-bold text-gray-900 w-full border-2 border-primary-300 outline-none focus:ring-2 focus:ring-primary-500 rounded px-3 py-2"
+                          placeholder="请输入文章标题"
+                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">文章内容</label>
+                          <textarea
+                            value={editableContent}
+                            onChange={(e) => setEditableContent(e.target.value)}
+                            className="w-full h-96 p-4 border-2 border-primary-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="请输入文章内容"
+                          />
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="btn btn-primary flex items-center space-x-2"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                            <span>保存编辑</span>
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="btn btn-secondary flex items-center space-x-2"
+                          >
+                            <XIcon className="w-4 h-4" />
+                            <span>取消编辑</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={generatedArticle.title}
+                        readOnly
+                        className="text-2xl font-bold text-gray-900 w-full border-none outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 bg-transparent"
+                      />
+                    )}
                   </div>
 
                   {/* 文章目录（如果有章节） */}
@@ -726,8 +788,9 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                     </div>
                   )}
 
-                  {/* 文章内容 */}
-                  <div className="prose max-w-none">
+                  {/* 文章内容 - 只在非编辑模式下显示 */}
+                  {!isEditing && (
+                    <div className="prose max-w-none">
                     {(() => {
                       const content = generatedArticle.content;
 
@@ -799,12 +862,17 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                         return null;
                       });
                     })()}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* 操作按钮 */}
+                  {/* 操作按钮 - 只在非编辑模式下显示 */}
+                  {!isEditing && (
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
                     <div className="flex space-x-2">
-                      <button className="btn btn-secondary flex items-center space-x-2">
+                      <button
+                        onClick={handleStartEdit}
+                        className="btn btn-secondary flex items-center space-x-2"
+                      >
                         <Edit3Icon className="w-4 h-4" />
                         <span>编辑</span>
                       </button>
@@ -830,6 +898,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
             )}
