@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 
@@ -23,10 +23,13 @@ export default function ArticleEditor({
   const modules = {
     toolbar: [
       [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      [{ 'font': [] }],
+      [{ 'size': ['small', false, 'large', 'huge'] }],
       ['bold', 'italic', 'underline', 'strike'],
       [{ 'color': [] }, { 'background': [] }],
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'align': ['center', 'right', 'left'] }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
       ['blockquote', 'code-block'],
       ['link', 'image'],
       ['clean']
@@ -47,6 +50,11 @@ export default function ArticleEditor({
 
   // 处理图片上传
   const handleImageUpload = () => {
+    // 检查是否在客户端环境
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
     const input = document.createElement('input')
     input.setAttribute('type', 'file')
     input.setAttribute('accept', 'image/*')
@@ -123,12 +131,36 @@ export default function ArticleEditor({
     }
   }, [])
 
-  // 监听value变化，处理新内容中的图片
+  // 自定义onChange处理函数，防止页面跳转
+  const handleChange = useCallback((content: string, delta: any, source: string, editor: any) => {
+    if (source !== 'user') return // 只处理用户输入
+
+    // 防止页面跳转到顶部
+  const preventScroll = () => {
+      window.scrollTo(0, window.scrollY)
+    }
+
+  // 延迟调用防止滚动
+  setTimeout(preventScroll, 10)
+
+  onChange(content)
+  }, [onChange])
+
+  // 监听value变化，确保内容同步
   useEffect(() => {
     if (value) {
       const quill = quillRef.current?.getEditor()
-      if (quill && quill.root.innerHTML !== value) {
-        processExistingImages()
+      if (quill) {
+        // 检查内容是否需要更新
+        const currentContent = quill.root.innerHTML
+        if (currentContent !== value) {
+          // 不要直接设置innerHTML，而是通过Quill的API设置内容
+          if (quill.getText() === '' || !currentContent.includes(value)) {
+            // 如果编辑器为空或者内容不匹配，设置新内容
+            quill.clipboard.dangerouslyPasteHTML(0, 0, value)
+          }
+          processExistingImages()
+        }
       }
     }
   }, [value])
@@ -139,35 +171,37 @@ export default function ArticleEditor({
         ref={quillRef}
         theme="snow"
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         modules={modules}
         formats={formats}
         placeholder={placeholder}
         style={{
-          minHeight: '400px',
-          maxHeight: '70vh',
+          minHeight: '600px',
+          maxHeight: '90vh',
           overflow: 'auto'
         }}
       />
 
       {/* 自定义样式 */}
       <style jsx global>{`
-        .article-editor .ql-editor {
-          font-size: 16px;
-          line-height: 1.7;
-          padding: 1.5rem;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        .article-editor {
+          position: relative;
         }
 
         .article-editor .ql-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 10;
           border-top-left-radius: 0.5rem;
           border-top-right-radius: 0.5rem;
           background: #f8fafc;
           border-bottom: 1px solid #e2e8f0;
           padding: 0.5rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .article-editor .ql-container {
+          border-top: none;
           border-bottom-left-radius: 0.5rem;
           border-bottom-right-radius: 0.5rem;
           background: white;
@@ -235,6 +269,54 @@ export default function ArticleEditor({
         .article-editor .ql-editor p {
           margin-bottom: 1rem;
           color: #374151;
+        }
+
+        /* 确保对齐功能正常工作 */
+        .article-editor .ql-editor .ql-align-center {
+          text-align: center;
+        }
+
+        .article-editor .ql-editor .ql-align-right {
+          text-align: right;
+        }
+
+        .article-editor .ql-editor .ql-align-left {
+          text-align: left;
+        }
+
+        .article-editor .ql-editor .ql-align-justify {
+          text-align: justify;
+        }
+
+        /* 确保引用样式正确显示 */
+        .article-editor .ql-editor blockquote {
+          border-left: 4px solid #3b82f6;
+          padding-left: 1rem;
+          margin: 1rem 0;
+          background: #f1f5f9;
+          padding: 0.75rem 1rem;
+          border-radius: 0.375rem;
+          color: #334155;
+        }
+
+        /* 确保代码块样式正确显示 */
+        .article-editor .ql-editor pre {
+          background: #1e293b;
+          color: #e2e8f0;
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin: 1rem 0;
+          font-family: 'Courier New', monospace;
+          line-height: 1.5;
+        }
+
+        .article-editor .ql-editor code {
+          background: #374151;
+          color: #e2e8f0;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          font-size: 0.875rem;
         }
 
         .article-editor .ql-toolbar .ql-picker-label {

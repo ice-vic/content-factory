@@ -55,6 +55,7 @@ export default function CreatePage() {
   const [generatedArticle, setGeneratedArticle] = useState<{
     title: string;
     content: string;
+    htmlContent?: string;
     sections: string[];
     estimatedReadingTime: number;
     hasImages?: boolean;
@@ -63,6 +64,7 @@ export default function CreatePage() {
   }>({
     title: '',
     content: '',
+    htmlContent: '',
     sections: [],
     estimatedReadingTime: 0
   })
@@ -276,12 +278,19 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
           const result = await generateArticle(topic, selectedInsight, parameters)
 
           if (result.success && result.article) {
-            setGeneratedArticle(result.article)
+            // 确保生成的文章包含htmlContent
+            setGeneratedArticle({
+              ...result.article,
+              htmlContent: result.article.content // 初始时htmlContent与content相同
+            })
           } else {
             // 如果AI生成失败，但有备选方案，则使用备选方案
             if (result.fallback) {
               console.log('🔄 使用备选文章方案')
-              setGeneratedArticle(result.fallback)
+              setGeneratedArticle({
+                ...result.fallback,
+                htmlContent: result.fallback.content // 确保备选方案也有htmlContent
+              })
               setErrorMessage('AI服务暂时不可用，已为您生成备用内容')
             } else {
               throw new Error(result.error || '文章生成失败')
@@ -326,17 +335,17 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
       const saveData = {
         title: generatedArticle.title,
         content: generatedArticle.content,
-        htmlContent: generatedArticle.content, // 直接保存内容，因为内容可能已经包含HTML
+        htmlContent: generatedArticle.htmlContent || generatedArticle.content || '', // 确保不为undefined
         platform: selectedPlatform || 'wechat',
-        style: articleStyle,
-        length: articleLength,
+        style: articleStyle || 'professional', // 添加默认值防御
+        length: articleLength || 'medium', // 添加默认值防御
         targetPlatforms: Object.keys(targetPlatforms).filter(key => targetPlatforms[key as keyof typeof targetPlatforms]),
         customInstructions: customInstructions.trim() || null,
         insightId: selectedInsightId || null,
         topicDirection: selectedTopicDirection || null,
         hasImages: generatedArticle.hasImages || false,
         imageConfig,
-        estimatedReadingTime: generatedArticle.estimatedReadingTime,
+        estimatedReadingTime: generatedArticle.estimatedReadingTime || 0, // 添加默认值防御
         sections: generatedArticle.sections || null
       }
 
@@ -415,7 +424,8 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
     setGeneratedArticle(prev => ({
       ...prev,
       title: editableTitle,
-      content: editableContent
+      content: editableContent,
+      htmlContent: editableContent // 确保HTML内容也同步更新
     }))
     setIsEditing(false)
     console.log('✅ 文章编辑已保存 - 富文本内容长度:', editableContent.length)
@@ -521,7 +531,8 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
 
                   return {
                     ...prev,
-                    content: updatedContent
+                    content: updatedContent,
+                    htmlContent: updatedContent // 同时更新htmlContent确保显示一致
                   };
                 });
 
@@ -1070,7 +1081,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                   )}
 
                   {/* 文章内容 */}
-                  <div className="prose max-w-none">
+                  <div className="prose max-w-none article-content">
                     {isEditing ? (
                       // 编辑模式：使用富文本编辑器
                       <div>
@@ -1094,80 +1105,125 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                         />
                       </div>
                     ) : (
-                      // 预览模式：正常渲染内容
+                      // 预览模式：统一使用HTML内容渲染
                       (() => {
-                        const content = generatedArticle.content;
+                        // 统一使用htmlContent，确保与编辑器显示一致
+                        const displayContent = generatedArticle.htmlContent || generatedArticle.content;
 
-                        // 多重检测确保HTML图片存在
-                        const hasGeneratedImage =
-                          content.includes('class="generated-image"') ||
-                          content.includes('data-image-id=') ||
-                          content.includes('<img src=');
-
-                        console.log('🔍 前端HTML检测:', {
-                          hasGeneratedImage,
-                          contentLength: content.length,
-                          containsClass: content.includes('class="generated-image"'),
-                          containsDataId: content.includes('data-image-id='),
-                          containsImgTag: content.includes('<img src='),
-                          contentPreview: content.substring(0, 200) + '...'
+                        console.log('🔍 内容渲染:', {
+                          hasHtmlContent: !!generatedArticle.htmlContent,
+                          contentLength: displayContent.length,
+                          contentPreview: displayContent.substring(0, 200) + '...'
                         });
 
-                        // 如果内容包含HTML图片，直接渲染整个内容
-                        if (hasGeneratedImage) {
-                          return <div dangerouslySetInnerHTML={{ __html: content }} />;
-                        }
-
-                        // 否则使用原来的分割逻辑处理Markdown
-                        const parts = content.split(/(\n+#{1,6}\s+.*\n*|\n+)/);
-
-                        return parts.map((part, index) => {
-                          if (!part || part.match(/^\n+$/)) return null;
-
-                          // 处理标题
-                          const titleMatch = part.match(/^(#{1,6})\s+(.+)$/m);
-                          if (titleMatch) {
-                            const level = titleMatch[1].length;
-                            const text = titleMatch[2].trim();
-                            const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
-                            return (
-                              <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
-                                {text}
-                              </HeadingTag>
-                            );
-                          }
-
-                          // 处理Markdown图片
-                          const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
-                          if (imageMatch) {
-                            const altText = imageMatch[1] || '生成的图片';
-                            return (
-                              <div key={index} className="my-6">
-                                <img
-                                  src={imageMatch[2]}
-                                  alt={altText}
-                                  className="w-full rounded-lg shadow-sm"
-                                />
-                                <p className="text-sm text-gray-500 mt-2 text-center">{altText}</p>
-                              </div>
-                            );
-                          }
-
-                          // 处理普通段落
-                          const trimmedPart = part.trim();
-                          if (trimmedPart) {
-                            return (
-                              <p key={index} className="text-gray-700 mb-4 leading-relaxed">
-                                {trimmedPart}
-                              </p>
-                            );
-                          }
-
-                          return null;
-                        });
+                        // 直接渲染HTML内容，确保与编辑器显示一致
+                        return <div dangerouslySetInnerHTML={{ __html: displayContent }} />;
                       })()
                     )}
                   </div>
+
+                  {/* 添加样式以确保编辑器和显示模式一致 */}
+                  <style jsx global>{`
+                    .article-content {
+                      position: relative;
+                    }
+
+                    /* 确保对齐功能正常工作 - 与编辑器保持一致 */
+                    .article-content .ql-align-center {
+                      text-align: center;
+                    }
+
+                    .article-content .ql-align-right {
+                      text-align: right;
+                    }
+
+                    .article-content .ql-align-left {
+                      text-align: left;
+                    }
+
+                    .article-content .ql-align-justify {
+                      text-align: justify;
+                    }
+
+                    /* 确保引用样式正确显示 - 与编辑器保持一致 */
+                    .article-content blockquote {
+                      border-left: 4px solid #3b82f6;
+                      padding-left: 1rem;
+                      margin: 1rem 0;
+                      background: #f1f5f9;
+                      padding: 0.75rem 1rem;
+                      border-radius: 0.375rem;
+                      color: #334155;
+                    }
+
+                    /* 确保代码块样式正确显示 - 与编辑器保持一致 */
+                    .article-content pre {
+                      background: #1e293b;
+                      color: #e2e8f0;
+                      padding: 1rem;
+                      border-radius: 0.5rem;
+                      overflow-x: auto;
+                      margin: 1rem 0;
+                      font-family: 'Courier New', monospace;
+                      line-height: 1.5;
+                    }
+
+                    .article-content code {
+                      background: #374151;
+                      color: #e2e8f0;
+                      padding: 0.25rem 0.5rem;
+                      border-radius: 0.25rem;
+                      font-size: 0.875rem;
+                    }
+
+                    /* 确保图片样式正确显示 - 与编辑器保持一致 */
+                    .article-content img {
+                      max-width: 100%;
+                      height: auto;
+                      border-radius: 0.5rem;
+                      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                      display: block;
+                      margin: 1rem auto;
+                    }
+
+                    .article-content .generated-image {
+                      margin: 1.5rem 0;
+                      text-align: center;
+                    }
+
+                    .article-content .generated-image img {
+                      max-width: 100%;
+                      height: auto;
+                      border-radius: 0.5rem;
+                      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    }
+
+                    /* 确保标题样式正确显示 */
+                    .article-content h1,
+                    .article-content h2,
+                    .article-content h3,
+                    .article-content h4,
+                    .article-content h5,
+                    .article-content h6 {
+                      color: #1e293b;
+                      margin-top: 1.5rem;
+                      margin-bottom: 1rem;
+                      font-weight: 600;
+                    }
+
+                    .article-content h1 { font-size: 2rem; }
+                    .article-content h2 { font-size: 1.75rem; }
+                    .article-content h3 { font-size: 1.5rem; }
+                    .article-content h4 { font-size: 1.25rem; }
+                    .article-content h5 { font-size: 1.125rem; }
+                    .article-content h6 { font-size: 1rem; }
+
+                    /* 确保段落样式正确显示 */
+                    .article-content p {
+                      margin-bottom: 1rem;
+                      color: #374151;
+                    }
+                  `}</style>
 
                   {/* 保存状态消息 */}
                   {saveMessage && (
