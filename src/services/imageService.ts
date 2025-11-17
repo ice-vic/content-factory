@@ -97,7 +97,7 @@ export function parseImagePlaceholders(content: string): ImageDescription[] {
 
   // 遍历每种格式模式进行匹配
   patterns.forEach((patternRegex) => {
-    let match;
+    let match: RegExpExecArray | null;
     // 重置正则表达式的lastIndex
     patternRegex.lastIndex = 0;
 
@@ -107,7 +107,7 @@ export function parseImagePlaceholders(content: string): ImageDescription[] {
       // 避免重复添加相同的占位符
       const isDuplicate = placeholders.some(p =>
         p.description === description &&
-        Math.abs((p.position || 0) - match.index) < 100
+        Math.abs((p.position || 0) - match!.index!) < 100
       );
 
       if (!isDuplicate) {
@@ -214,7 +214,7 @@ export async function generateImageWithSiliconFlow(
         console.error('❌ JSON解析失败:', jsonError);
         const responseText = await response.text();
         console.error('❌ 响应内容:', responseText);
-        throw new Error(`API响应JSON解析失败: ${jsonError.message}`);
+        throw new Error(`API响应JSON解析失败: ${jsonError instanceof Error ? jsonError.message : '未知错误'}`);
       }
 
       console.log('✅ API响应成功:', {
@@ -634,7 +634,7 @@ async function tryUnsplashImage(description: ImageDescription): Promise<Generate
   }
 
   try {
-    const keywords = extractKeywords(description.description);
+    const keywords = extractKeywords(description.description).join(',');
     const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=1&orientation=landscape`, {
       headers: {
         'Authorization': `Client-ID ${accessKey}`
@@ -675,7 +675,7 @@ async function tryPexelsImage(description: ImageDescription): Promise<GeneratedI
   }
 
   try {
-    const keywords = extractKeywords(description.description);
+    const keywords = extractKeywords(description.description).join(',');
     const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=1&orientation=landscape`, {
       headers: {
         'Authorization': apiKey
@@ -958,13 +958,13 @@ function extractKeywords(content: string): string[] {
     .filter(word => !isStopWord(word));
 
   // 统计词频并返回高频词
-  const wordFreq = {};
+  const wordFreq: { [key: string]: number } = {};
   words.forEach(word => {
     wordFreq[word] = (wordFreq[word] || 0) + 1;
   });
 
   return Object.entries(wordFreq)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 20)
     .map(([word]) => word);
 }
@@ -980,11 +980,11 @@ function extractConcepts(content: string, theme: string): string[] {
     '创意': ['设计创作', '艺术表达', '视觉创意', '创新思维', '美学设计', '灵感来源', '创意产品']
   };
 
-  const concepts = [];
-  const themeConcepts = conceptMap[theme] || conceptMap['商务'];
+  const concepts: string[] = [];
+  const themeConcepts = conceptMap[theme as keyof typeof conceptMap] || conceptMap['商务'];
 
   // 检查内容中出现的概念
-  themeConcepts.forEach(concept => {
+  themeConcepts.forEach((concept: string) => {
     if (content.includes(concept)) {
       concepts.push(concept);
     }
@@ -1004,7 +1004,7 @@ function extractEmotions(content: string): string[] {
     '实用': ['实用', '有效', '高效', '便捷', '简单', '快速', '经济', '节省', '优化']
   };
 
-  const detectedEmotions = [];
+  const detectedEmotions: string[] = [];
 
   Object.entries(emotionMap).forEach(([emotion, keywords]) => {
     const keywordList = Array.isArray(keywords) ? keywords : [keywords];
@@ -1029,7 +1029,7 @@ function extractScenarios(content: string): string[] {
     /创意|设计|艺术|创作/g
   ];
 
-  const scenarios = [];
+  const scenarios: string[] = [];
   scenarioPatterns.forEach(pattern => {
     const matches = content.match(pattern);
     if (matches && matches.length > 0) {
@@ -1090,9 +1090,9 @@ async function generateContextualPrompts(
     'data-viz': '信息图表风格，清晰专业，数据可视化'
   };
 
-  const baseStyle = stylePrompts[imageStyle] || stylePrompts.photorealistic;
+  const baseStyle = stylePrompts[imageStyle as keyof typeof stylePrompts] || stylePrompts.photorealistic;
 
-  const prompts = [];
+  const prompts: string[] = [];
   const { keywords, concepts, emotions, scenarios, platform, targetAudience } = analysis;
 
   // 为每个图片生成独特的提示词
@@ -1170,8 +1170,8 @@ function generateFallbackPrompts(theme: string, imageStyle: string, maxImages: n
     ]
   };
 
-  const templates = fallbackTemplates[imageStyle] || fallbackTemplates.photorealistic;
-  const prompts = [];
+  const templates = fallbackTemplates[imageStyle as keyof typeof fallbackTemplates] || fallbackTemplates.photorealistic;
+  const prompts: string[] = [];
 
   for (let i = 0; i < maxImages; i++) {
     prompts.push(templates[i % templates.length]);

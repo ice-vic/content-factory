@@ -157,7 +157,7 @@ export default function ArticleEditor({
           // 不要直接设置innerHTML，而是通过Quill的API设置内容
           if (quill.getText() === '' || !currentContent.includes(value)) {
             // 如果编辑器为空或者内容不匹配，设置新内容
-            quill.clipboard.dangerouslyPasteHTML(0, 0, value)
+            quill.clipboard.dangerouslyPasteHTML(value)
           }
           processExistingImages()
         }

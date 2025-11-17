@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     // 检查是否需要生成图片占位符
     const needsImageGeneration = parameters.enableImages &&
-      (!parsedArticle.hasImages || parsedArticle.imagePlaceholders.length === 0);
+      (!parsedArticle.hasImages || (parsedArticle.imagePlaceholders && parsedArticle.imagePlaceholders.length === 0));
 
     if (needsImageGeneration) {
       console.log('🚨 AI未生成图片占位符，启用强制生成机制');
@@ -564,16 +564,16 @@ async function adjustImageParameters(parameters: GenerationRequest['parameters']
   if (parameters.smartImageCount) {
     if (contentLength < 600) {
       // 短篇：最多2张图片
-      optimalMaxImages = Math.min(parameters.maxImages, 2);
+      optimalMaxImages = Math.min(parameters.maxImages || 2, 2);
     } else if (contentLength < 1200) {
       // 中篇：最多4张图片
-      optimalMaxImages = Math.min(parameters.maxImages, 4);
+      optimalMaxImages = Math.min(parameters.maxImages || 4, 4);
     } else if (contentLength < 2000) {
       // 长篇：最多6张图片
-      optimalMaxImages = Math.min(parameters.maxImages, 6);
+      optimalMaxImages = Math.min(parameters.maxImages || 6, 6);
     } else {
       // 超长篇：最多8张图片
-      optimalMaxImages = Math.min(parameters.maxImages, 8);
+      optimalMaxImages = Math.min(parameters.maxImages || 8, 8);
     }
 
     console.log(`🧠 智能调整模式：文章长度 ${contentLength} 字，建议图片数量 ${optimalMaxImages}`);
@@ -584,12 +584,12 @@ async function adjustImageParameters(parameters: GenerationRequest['parameters']
   // 根据平台特性进一步调整
   const platformAdjustment = getPlatformAdjustment(parameters.platforms);
   if (platformAdjustment !== 1) {
-    optimalMaxImages = Math.round(optimalMaxImages * platformAdjustment);
+    optimalMaxImages = Math.round((optimalMaxImages || 1) * platformAdjustment);
     console.log(`🎯 平台调整：${Object.keys(parameters.platforms).filter(k => parameters.platforms[k as keyof typeof parameters.platforms]).join(', ')}，调整系数 ${platformAdjustment}`);
   }
 
   // 确保最少1张，最多10张
-  optimalMaxImages = Math.max(1, Math.min(10, optimalMaxImages));
+  optimalMaxImages = Math.max(1, Math.min(10, optimalMaxImages || 1));
 
   return {
     ...parameters,

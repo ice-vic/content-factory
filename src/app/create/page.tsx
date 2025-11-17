@@ -1316,6 +1316,78 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                       text-decoration: line-through;
                       color: #6b7280;
                     }
+
+                    /* 修复字体颜色和背景色显示问题 - Quill颜色类支持 */
+                    /* Quill默认文字颜色 */
+                    .article-content .ql-color-red { color: #e60000; }
+                    .article-content .ql-color-orange { color: #f90; }
+                    .article-content .ql-color-yellow { color: #ff0; }
+                    .article-content .ql-color-green { color: #008a00; }
+                    .article-content .ql-color-blue { color: #06c; }
+                    .article-content .ql-color-purple { color: #93f; }
+                    .article-content .ql-color-white { color: #fff; }
+                    .article-content .ql-color-gray { color: #808080; }
+                    .article-content .ql-color-black { color: #000; }
+
+                    /* Quill扩展颜色 */
+                    .article-content .ql-color-pink { color: #e91e63; }
+                    .article-content .ql-color-indigo { color: #3f51b5; }
+                    .article-content .ql-color-teal { color: #009688; }
+                    .article-content .ql-color-cyan { color: #00bcd4; }
+                    .article-content .ql-color-lime { color: #8bc34a; }
+                    .article-content .ql-color-amber { color: #ffc107; }
+                    .article-content .ql-color-deep-orange { color: #ff5722; }
+                    .article-content .ql-color-brown { color: #795548; }
+                    .article-content .ql-color-grey { color: #9e9e9e; }
+                    .article-content .ql-color-blue-grey { color: #607d8b; }
+
+                    /* Quill默认背景颜色 */
+                    .article-content .ql-background-red { background-color: #e60000; }
+                    .article-content .ql-background-orange { background-color: #f90; }
+                    .article-content .ql-background-yellow { background-color: #ff0; }
+                    .article-content .ql-background-green { background-color: #008a00; }
+                    .article-content .ql-background-blue { background-color: #06c; }
+                    .article-content .ql-background-purple { background-color: #93f; }
+                    .article-content .ql-background-white { background-color: #fff; }
+                    .article-content .ql-background-gray { background-color: #808080; }
+                    .article-content .ql-background-black { background-color: #000; }
+
+                    /* Quill扩展背景颜色 */
+                    .article-content .ql-background-pink { background-color: #f48fb1; }
+                    .article-content .ql-background-indigo { background-color: #9fa8da; }
+                    .article-content .ql-background-teal { background-color: #80cbc4; }
+                    .article-content .ql-background-cyan { background-color: #b2ebf2; }
+                    .article-content .ql-background-lime { background-color: #dcedc8; }
+                    .article-content .ql-background-amber { background-color: #ffe082; }
+                    .article-content .ql-background-deep-orange { background-color: #ffccbc; }
+                    .article-content .ql-background-brown { background-color: #bcaaa4; }
+                    .article-content .ql-background-grey { background-color: #e0e0e0; }
+                    .article-content .ql-background-blue-grey { background-color: #cfd8dc; }
+
+                    /* 为背景色文字添加对比度处理 */
+                    .article-content .ql-background-black {
+                      color: #fff;
+                      padding: 2px 4px;
+                      border-radius: 2px;
+                    }
+
+                    .article-content .ql-background-blue,
+                    .article-content .ql-background-indigo,
+                    .article-content .ql-background-purple {
+                      color: #fff;
+                      padding: 2px 4px;
+                      border-radius: 2px;
+                    }
+
+                    .article-content .ql-background-white,
+                    .article-content .ql-background-yellow,
+                    .article-content .ql-background-lime,
+                    .article-content .ql-background-amber,
+                    .article-content .ql-background-grey {
+                      color: #000;
+                      padding: 2px 4px;
+                      border-radius: 2px;
+                    }
                   `}</style>
 
                   {/* 保存状态消息 */}

@@ -24,12 +24,16 @@ export async function POST(request: NextRequest) {
     } = body
 
     // 验证必填字段
-    if (!title || !content || !platform || !style) {
+    if (!title || !content || !platform) {
       return NextResponse.json({
         success: false,
-        error: '标题、内容、平台和风格为必填字段'
+        error: '标题、内容和平台为必填字段'
       }, { status: 400 })
     }
+
+    // 设置默认值
+    const finalStyle = style || 'professional'
+    const finalLength = length || 'medium'
 
     // 生成纯文本内容（用于搜索）
     const plainContent = htmlContent ?
@@ -44,8 +48,8 @@ export async function POST(request: NextRequest) {
         htmlContent,
         plainContent,
         platform,
-        style,
-        length: length || 'medium',
+        style: finalStyle,
+        length: finalLength,
         targetPlatforms: JSON.stringify(targetPlatforms || []),
         customInstructions: body.customInstructions || null,
         insightId,
@@ -53,7 +57,7 @@ export async function POST(request: NextRequest) {
         hasImages: hasImages || false,
         imageConfig: imageConfig ? JSON.stringify(imageConfig) : null,
         status: 'pending', // 保存到发布管理时状态为 pending
-        estimatedReadingTime,
+        estimatedReadingTime: estimatedReadingTime || 0,
         sections: sections ? JSON.stringify(sections) : null
       }
     })
