@@ -57,6 +57,7 @@ export default function ArticleEditModal({
   const [content, setContent] = useState('')
   const [htmlContent, setHtmlContent] = useState('')
   const [customInstructions, setCustomInstructions] = useState('')
+  const [editorInitialized, setEditorInitialized] = useState(false)
 
   // 重置状态
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function ArticleEditModal({
       setSuccessMessage('')
       setLoading(false)
       setSaving(false)
+      setEditorInitialized(false)
       // 清空编辑状态
       setTitle('')
       setContent('')
@@ -81,16 +83,17 @@ export default function ArticleEditModal({
     }
   }, [isOpen, articleId])
 
-  // 当文章数据加载完成后，设置编辑状态
+  // 当文章数据加载完成后，设置编辑状态（只在首次加载时）
   useEffect(() => {
-    if (article) {
+    if (article && !editorInitialized) {
       console.log('📄 文章数据加载完成，设置编辑状态')
       setTitle(article.title)
       setContent(article.content)
       setHtmlContent(article.htmlContent)
       setCustomInstructions(article.customInstructions || '')
+      setEditorInitialized(true)
     }
-  }, [article])
+  }, [article, editorInitialized])
 
   const loadArticleDetail = async () => {
     if (!articleId) return
@@ -156,23 +159,32 @@ export default function ArticleEditModal({
 
       if (response.ok && result.success) {
         console.log('✅ 文章保存成功')
-        setSuccessMessage('文章保存成功！')
+        setSuccessMessage('文章保存成功！您可以继续编辑或手动关闭窗口。')
 
-        // 更新本地文章数据
+        // 更新本地文章数据，但不触发编辑状态重置
         const updatedArticle = {
           ...article,
           ...result.article,
           updatedAt: new Date().toISOString()
         }
-        setArticle(updatedArticle)
+
+        // 只更新必要字段，避免触发useEffect导致编辑器内容被覆盖
+        setArticle(prev => {
+          if (!prev) return updatedArticle
+          return {
+            ...prev,
+            title: updatedArticle.title,
+            content: updatedArticle.content,
+            htmlContent: updatedArticle.htmlContent,
+            customInstructions: updatedArticle.customInstructions,
+            updatedAt: updatedArticle.updatedAt
+          }
+        })
 
         // 通知父组件
         onSave(updatedArticle)
 
-        // 3秒后关闭弹窗
-        setTimeout(() => {
-          onClose()
-        }, 2000)
+        // 移除自动关闭，让用户手动关闭，提升用户体验
 
       } else {
         throw new Error(result.error || '保存文章失败')
@@ -180,7 +192,13 @@ export default function ArticleEditModal({
 
     } catch (error) {
       console.error('💥 保存文章失败:', error)
-      setError(error instanceof Error ? error.message : '保存文章失败')
+      const errorMessage = error instanceof Error ? error.message : '保存文章失败'
+      setError(errorMessage)
+
+      // 5秒后自动清除错误信息
+      setTimeout(() => {
+        setError(prev => prev === errorMessage ? '' : prev)
+      }, 5000)
     } finally {
       setSaving(false)
     }
@@ -268,19 +286,43 @@ export default function ArticleEditModal({
             <div className="p-6 space-y-6">
               {/* 错误和成功提示 */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertCircleIcon className="w-5 h-5 text-red-600" />
-                    <p className="text-red-800">{error}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircleIcon className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <p className="text-red-800 text-sm">{error}</p>
+                    </div>
+                    <button
+                      onClick={() => setError('')}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                      title="清除错误"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
                   </div>
+                  <button
+                    onClick={handleSave}
+                    className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    点击重试
+                  </button>
                 </div>
               )}
 
               {successMessage && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckIcon className="w-5 h-5 text-green-600" />
-                    <p className="text-green-800">{successMessage}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <CheckIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <p className="text-green-800 text-sm">{successMessage}</p>
+                    </div>
+                    <button
+                      onClick={() => setSuccessMessage('')}
+                      className="text-green-400 hover:text-green-600 transition-colors"
+                      title="清除消息"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               )}
@@ -311,7 +353,7 @@ export default function ArticleEditModal({
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       {article && (
                         <ArticleEditor
-                          key={`editor-${article.id}-${article.updatedAt}`}
+                          key={`editor-${article.id}`}
                           value={htmlContent || content}
                           onChange={handleContentChange}
                           placeholder="开始编辑文章内容..."
@@ -434,6 +476,15 @@ export default function ArticleEditModal({
                 </>
               )}
             </button>
+            {successMessage && (
+              <button
+                onClick={onClose}
+                className="btn btn-success flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckIcon className="w-4 h-4" />
+                <span>完成并关闭</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -179,12 +179,11 @@ export async function PUT(
       message: '文章更新成功'
     })
 
-  } catch (error) {
+} catch (error) {
     console.error('💥 更新文章失败:', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      articleId: params.id,
-      updateData
+      articleId: params.id
     })
 
     return NextResponse.json({

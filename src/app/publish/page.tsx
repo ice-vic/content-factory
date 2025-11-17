@@ -48,6 +48,13 @@ export default function PublishPage() {
   // 每页显示数量
   const pageSize = 10
 
+  // ID类型转换工具函数
+  const toArticleId = (id: string | number): string => String(id)
+  const toApiId = (id: string | number): number => {
+    const parsed = parseInt(String(id))
+    return isNaN(parsed) ? 0 : parsed
+  }
+
   // 加载文章列表
   const loadArticles = async (page: number = currentPage) => {
     setLoading(true)
@@ -272,10 +279,33 @@ export default function PublishPage() {
 
   const handleArticleSaved = (updatedArticle: any) => {
     console.log('✅ 文章已更新:', updatedArticle)
+
+    // 确保ID类型一致
+    const articleId = toArticleId(updatedArticle.id)
+
+    // 选择性更新字段，避免覆盖不相关数据
+    const updateFields = {
+      title: updatedArticle.title,
+      content: updatedArticle.content,
+      htmlContent: updatedArticle.htmlContent,
+      customInstructions: updatedArticle.customInstructions,
+      status: updatedArticle.status,
+      updatedAt: updatedArticle.updatedAt || new Date().toISOString()
+    }
+
     // 更新文章列表中的对应文章
-    setArticles(prev => prev.map(article =>
-      article.id === updatedArticle.id ? { ...article, ...updatedArticle } : article
-    ))
+    setArticles(prev => prev.map(article => {
+      if (toArticleId(article.id) === articleId) {
+        // 只更新编辑相关字段，保留其他元数据
+        return {
+          ...article,
+          ...updateFields
+        }
+      }
+      return article
+    }))
+
+    console.log('🔄 文章列表已更新，ID:', articleId)
   }
 
   const handleDeleteArticle = async (articleId: string) => {

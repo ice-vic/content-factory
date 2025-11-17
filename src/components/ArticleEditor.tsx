@@ -6,7 +6,7 @@ import 'react-quill/dist/quill.snow.css'
 
 interface ArticleEditorProps {
   value: string
-  onChange: (value: string) => void
+  onChange: (content: string, htmlContent?: string) => void
   placeholder?: string
   className?: string
 }
@@ -136,14 +136,18 @@ export default function ArticleEditor({
     if (source !== 'user') return // 只处理用户输入
 
     // 防止页面跳转到顶部
-  const preventScroll = () => {
-      window.scrollTo(0, window.scrollY)
+    const preventScroll = () => {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, window.scrollY)
+      }
     }
 
-  // 延迟调用防止滚动
-  setTimeout(preventScroll, 10)
+    // 延迟调用防止滚动，延长延迟时间
+    setTimeout(preventScroll, 50)
 
-  onChange(content)
+    // 获取HTML内容并传递给父组件
+    const htmlContent = editor ? editor.root.innerHTML : content
+    onChange(content, htmlContent)
   }, [onChange])
 
   // 监听value变化，确保内容同步

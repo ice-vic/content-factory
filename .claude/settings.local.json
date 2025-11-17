@@ -18,7 +18,13 @@
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git restore:*)",
+      "Bash(npx next dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run)"
     ],
     "deny": [],
     "ask": []
