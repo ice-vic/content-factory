@@ -1,36 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// 创建全局Prisma实例，避免重复创建连接
+let prisma: PrismaClient | null = null;
+
+function getPrismaClient(): PrismaClient {
+  if (!prisma) {
+    prisma = new PrismaClient({
+      log: ['warn', 'error'],
+      errorFormat: 'minimal'
+    });
+  }
+  return prisma;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const startTime = Date.now();
+  let client = getPrismaClient();
+
   try {
+    console.log(`🔍 开始获取洞察详情 ID: ${params.id}`);
+
     const id = parseInt(params.id);
 
     if (isNaN(id)) {
+      console.log(`❌ 无效的ID: ${params.id}`);
       return NextResponse.json(
         { success: false, error: '无效的ID' },
         { status: 400 }
       );
     }
 
-    // 获取历史记录和分析结果
-    const history = await prisma.searchHistory.findUnique({
+    // 设置查询超时
+    const queryTimeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('查询超时')), 10000); // 10秒超时
+    });
+
+    // 获取历史记录和分析结果，添加超时处理
+    const historyPromise = client.searchHistory.findUnique({
       where: { id },
       include: {
         analysisResult: true
       }
     });
 
+    const history = await Promise.race([historyPromise, queryTimeout]) as any;
+
     if (!history || !history.analysisResult) {
+      console.log(`❌ 未找到洞察数据 ID: ${id}`);
       return NextResponse.json(
         { success: false, error: '未找到该洞察数据' },
         { status: 404 }
       );
     }
+
+    console.log(`✅ 找到洞察数据: ${history.keyword}`);
 
     const analysisResult = history.analysisResult;
 
@@ -64,8 +91,10 @@ export async function GET(
         dataSupport: Array.isArray(insight.dataSupport) ? insight.dataSupport : []
       }));
 
+      console.log(`✅ 解析了 ${structuredTopicInsights.length} 个洞察`);
+
     } catch (error) {
-      console.error('解析结构化洞察数据失败:', error);
+      console.error('❌ 解析结构化洞察数据失败:', error);
       structuredTopicInsights = [];
     }
 
@@ -86,6 +115,9 @@ export async function GET(
       ]
     ).filter((keyword: string, index: number, arr: string[]) => arr.indexOf(keyword) === index);
 
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ 洞察详情获取成功，耗时: ${responseTime}ms`);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -99,12 +131,25 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('获取洞察详情失败:', error);
+    const responseTime = Date.now() - startTime;
+    console.error(`💥 获取洞察详情失败 (耗时: ${responseTime}ms):`, {
+      error: error instanceof Error ? error.message : '未知错误',
+      id: params.id,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return NextResponse.json(
-      { success: false, error: '获取洞察详情失败' },
+      {
+        success: false,
+        error: '获取洞察详情失败',
+        details: {
+          id: params.id,
+          timestamp: new Date().toISOString(),
+          responseTime: `${responseTime}ms`
+        }
+      },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
+  // 注意：不再在这里断开连接，让全局连接保持活跃
 }

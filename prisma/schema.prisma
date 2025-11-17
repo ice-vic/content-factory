@@ -62,3 +62,69 @@ model AnalysisResult {
 
   @@map("analysis_results")
 }
+
+// 文章表
+model Article {
+  id                   Int      @id @default(autoincrement())
+  title                String
+  content              String
+  htmlContent          String?  @map("html_content")  // 带HTML格式的内容（包含图片）
+  plainContent         String?  @map("plain_content")  // 纯文本内容（用于搜索）
+
+  // 创作相关参数
+  platform             String                    // 'wechat' | 'xiaohongshu'
+  style                String                    // 'professional' | 'casual' | 'humorous'
+  length               String                    // 'short' | 'medium' | 'long'
+  targetPlatforms      String  @map("target_platforms") // JSON: ["wechat", "xiaohongshu"]
+  customInstructions   String? @map("custom_instructions")
+
+  // 洞察关联
+  insightId            String? @map("insight_id")
+  topicDirection       String? @map("topic_direction")
+
+  // 配图相关
+  hasImages            Boolean @default(false) @map("has_images")
+  imageConfig          String?  @map("image_config")  // JSON: 配图配置
+
+  // 状态和元数据
+  status               String   @default("draft")  // 'draft' | 'pending' | 'published' | 'withdrawn'
+  estimatedReadingTime Int?     @map("estimated_reading_time")
+  sections             String?  // JSON: 文章章节
+
+  // 时间戳
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // 关联发布记录
+  publishRecords       PublishRecord[]
+
+  @@map("articles")
+}
+
+// 发布记录表
+model PublishRecord {
+  id           Int      @id @default(autoincrement())
+  articleId    Int      @map("article_id")
+  platform     String   // 'wechat' | 'xiaohongshu'
+  status       String   @default("pending") // 'pending' | 'published' | 'failed' | 'withdrawn'
+
+  // 发布相关数据
+  publishedUrl String?  @map("published_url")
+  publishedAt  DateTime? @map("published_at")
+  withdrawnAt  DateTime? @map("withdrawn_at")
+
+  // 错误信息
+  errorMessage String?  @map("error_message")
+  retryCount   Int      @default(0) @map("retry_count")
+
+  // 平台返回的数据
+  platformData String?  @map("platform_data") // JSON: 平台返回的ID、统计数据等
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // 关联文章
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("publish_records")
+}

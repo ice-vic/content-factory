@@ -5,6 +5,8 @@ import Navigation from '@/components/Navigation'
 import InsightSelector from '@/components/InsightSelector'
 import KeywordInsightViewer from '@/components/KeywordInsightViewer'
 import PlatformSelector from '@/components/PlatformSelector'
+import RichTextEditor from '@/components/RichTextEditor'
+import ArticleEditor from '@/components/ArticleEditor'
 import {
   PenToolIcon,
   Wand2Icon,
@@ -65,6 +67,11 @@ export default function CreatePage() {
     estimatedReadingTime: 0
   })
   const [errorMessage, setErrorMessage] = useState('')
+
+  // 保存相关状态
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
+  const [saveMessageType, setSaveMessageType] = useState<'success' | 'error'>('success')
 
   // 编辑相关状态
   const [isEditing, setIsEditing] = useState(false)
@@ -296,9 +303,81 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
     }
   }
 
-  const handleSaveToPublish = () => {
-    // 这里将来会调用API保存到发布管理
-    alert('文章已保存到发布管理！')
+  const handleSaveToPublish = async () => {
+    if (!generatedArticle.title || !generatedArticle.content) {
+      setErrorMessage('没有可保存的文章内容')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveMessage('')
+
+    try {
+      // 构建配图配置对象
+      const imageConfig = enableImages ? {
+        density: imageDensity,
+        style: imageStyle,
+        position: imagePosition,
+        maxImages,
+        smartImageCount
+      } : null
+
+      // 准备保存的数据
+      const saveData = {
+        title: generatedArticle.title,
+        content: generatedArticle.content,
+        htmlContent: generatedArticle.content, // 直接保存内容，因为内容可能已经包含HTML
+        platform: selectedPlatform || 'wechat',
+        style: articleStyle,
+        length: articleLength,
+        targetPlatforms: Object.keys(targetPlatforms).filter(key => targetPlatforms[key as keyof typeof targetPlatforms]),
+        customInstructions: customInstructions.trim() || null,
+        insightId: selectedInsightId || null,
+        topicDirection: selectedTopicDirection || null,
+        hasImages: generatedArticle.hasImages || false,
+        imageConfig,
+        estimatedReadingTime: generatedArticle.estimatedReadingTime,
+        sections: generatedArticle.sections || null
+      }
+
+      console.log('🔄 准备保存文章到发布管理:', {
+        title: saveData.title,
+        platform: saveData.platform,
+        hasImages: saveData.hasImages,
+        sectionsCount: saveData.sections?.length || 0
+      })
+
+      const response = await fetch('/api/content/save-to-publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(saveData)
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setSaveMessage(`文章已成功保存到发布管理！文章ID: ${result.articleId}`)
+        setSaveMessageType('success')
+        console.log('✅ 文章保存成功:', result)
+
+        // 3秒后清除成功消息
+        setTimeout(() => {
+          setSaveMessage('')
+        }, 5000)
+
+      } else {
+        throw new Error(result.error || '保存失败')
+      }
+
+    } catch (error) {
+      console.error('💥 保存文章失败:', error)
+      setSaveMessage(error instanceof Error ? error.message : '保存文章失败，请稍后重试')
+      setSaveMessageType('error')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleRegenerate = () => {
@@ -310,7 +389,20 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
   const handleStartEdit = () => {
     setIsEditing(true)
     setEditableTitle(generatedArticle.title)
-    setEditableContent(generatedArticle.content)
+
+    // 处理内容：如果包含HTML图片，保持HTML格式；否则使用原始内容
+    const content = generatedArticle.content
+    const hasHtmlImages = content.includes('class="generated-image"') ||
+                        content.includes('data-image-id=') ||
+                        content.includes('<img src=')
+
+    if (hasHtmlImages) {
+      // 如果有HTML图片，直接使用HTML内容
+      setEditableContent(content)
+    } else {
+      // 如果是纯Markdown内容，可以转换为HTML或保持原样
+      setEditableContent(content)
+    }
   }
 
   const handleCancelEdit = () => {
@@ -326,7 +418,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
       content: editableContent
     }))
     setIsEditing(false)
-    console.log('✅ 文章编辑已保存')
+    console.log('✅ 文章编辑已保存 - 富文本内容长度:', editableContent.length)
   }
 
   // 单张图片重新生成函数
@@ -397,7 +489,7 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
             const newImageElement = tempDiv.firstChild;
 
             if (newImageElement) {
-              const newImg = newImageElement.querySelector('img');
+              const newImg = (newImageElement as Element).querySelector('img');
               if (newImg && newImg.src) {
                 // 更新文章内容中的图片URL
                 const newImageUrl = newImg.src;
@@ -481,7 +573,6 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
           }
         }
       }
-
     } catch (error) {
       console.error('💥 图片重新生成网络错误:', {
         imageId,
@@ -925,53 +1016,47 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 <div className="p-6">
                   {/* 文章标题 */}
                   <div className="mb-6">
-                    {isEditing ? (
-                      <div className="space-y-4">
-                        <input
-                          type="text"
-                          value={editableTitle}
-                          onChange={(e) => setEditableTitle(e.target.value)}
-                          className="text-2xl font-bold text-gray-900 w-full border-2 border-primary-300 outline-none focus:ring-2 focus:ring-primary-500 rounded px-3 py-2"
-                          placeholder="请输入文章标题"
-                        />
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">文章内容</label>
-                          <textarea
-                            value={editableContent}
-                            onChange={(e) => setEditableContent(e.target.value)}
-                            className="w-full h-96 p-4 border-2 border-primary-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="请输入文章内容"
-                          />
-                        </div>
+                    <input
+                      type="text"
+                      value={isEditing ? editableTitle : generatedArticle.title}
+                      onChange={(e) => setEditableTitle(e.target.value)}
+                      readOnly={!isEditing}
+                      className={`text-2xl font-bold text-gray-900 w-full rounded px-2 py-1 transition-colors ${
+                        isEditing
+                          ? 'border-2 border-primary-300 outline-none focus:ring-2 focus:ring-primary-500 bg-white'
+                          : 'border-none outline-none focus:ring-2 focus:ring-primary-500 bg-transparent cursor-pointer hover:bg-gray-50'
+                      }`}
+                      placeholder="请输入文章标题"
+                    />
+                  </div>
+
+                  {/* 编辑控制按钮 */}
+                  {isEditing && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-blue-800 font-medium">✏️ 正在编辑模式</span>
                         <div className="flex space-x-2">
                           <button
                             onClick={handleSaveEdit}
-                            className="btn btn-primary flex items-center space-x-2"
+                            className="btn btn-primary flex items-center space-x-2 text-sm"
                           >
                             <CheckIcon className="w-4 h-4" />
-                            <span>保存编辑</span>
+                            <span>保存</span>
                           </button>
                           <button
                             onClick={handleCancelEdit}
-                            className="btn btn-secondary flex items-center space-x-2"
+                            className="btn btn-secondary flex items-center space-x-2 text-sm"
                           >
                             <XIcon className="w-4 h-4" />
-                            <span>取消编辑</span>
+                            <span>取消</span>
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <input
-                        type="text"
-                        value={generatedArticle.title}
-                        readOnly
-                        className="text-2xl font-bold text-gray-900 w-full border-none outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 bg-transparent"
-                      />
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* 文章目录（如果有章节） */}
-                  {generatedArticle.sections && generatedArticle.sections.length > 0 && (
+                  {!isEditing && generatedArticle.sections && generatedArticle.sections.length > 0 && (
                     <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">文章目录</h4>
                       <div className="space-y-1">
@@ -984,86 +1069,143 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                     </div>
                   )}
 
-                  {/* 文章内容 - 只在非编辑模式下显示 */}
-                  {!isEditing && (
-                    <div className="prose max-w-none">
-                    {(() => {
-                      const content = generatedArticle.content;
+                  {/* 文章内容 */}
+                  <div className="prose max-w-none">
+                    {isEditing ? (
+                      // 编辑模式：使用富文本编辑器
+                      <div>
+                        {/* 标题编辑 */}
+                        <div className="mb-6">
+                          <input
+                            type="text"
+                            value={editableTitle}
+                            onChange={(e) => setEditableTitle(e.target.value)}
+                            className="text-3xl font-bold text-gray-900 w-full rounded px-3 py-2 border-2 border-primary-300 outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="请输入文章标题"
+                          />
+                        </div>
 
-                      // 多重检测确保HTML图片存在
-                      const hasGeneratedImage =
-                        content.includes('class="generated-image"') ||
-                        content.includes('data-image-id=') ||
-                        content.includes('<img src=');
+                        {/* 富文本内容编辑器 */}
+                        <ArticleEditor
+                          value={editableContent}
+                          onChange={setEditableContent}
+                          placeholder="请输入文章内容..."
+                          className="border-2 border-primary-300 rounded-lg"
+                        />
+                      </div>
+                    ) : (
+                      // 预览模式：正常渲染内容
+                      (() => {
+                        const content = generatedArticle.content;
 
-                      console.log('🔍 前端HTML检测:', {
-                        hasGeneratedImage,
-                        contentLength: content.length,
-                        containsClass: content.includes('class="generated-image"'),
-                        containsDataId: content.includes('data-image-id='),
-                        containsImgTag: content.includes('<img src='),
-                        contentPreview: content.substring(0, 200) + '...'
-                      });
+                        // 多重检测确保HTML图片存在
+                        const hasGeneratedImage =
+                          content.includes('class="generated-image"') ||
+                          content.includes('data-image-id=') ||
+                          content.includes('<img src=');
 
-                      // 如果内容包含HTML图片，直接渲染整个内容
-                      if (hasGeneratedImage) {
-                        return <div dangerouslySetInnerHTML={{ __html: content }} />;
-                      }
+                        console.log('🔍 前端HTML检测:', {
+                          hasGeneratedImage,
+                          contentLength: content.length,
+                          containsClass: content.includes('class="generated-image"'),
+                          containsDataId: content.includes('data-image-id='),
+                          containsImgTag: content.includes('<img src='),
+                          contentPreview: content.substring(0, 200) + '...'
+                        });
 
-                      // 否则使用原来的分割逻辑处理Markdown
-                      const parts = content.split(/(\n+#{1,6}\s+.*\n*|\n+)/);
-
-                      return parts.map((part, index) => {
-                        if (!part || part.match(/^\n+$/)) return null;
-
-                        // 处理标题
-                        const titleMatch = part.match(/^(#{1,6})\s+(.+)$/m);
-                        if (titleMatch) {
-                          const level = titleMatch[1].length;
-                          const text = titleMatch[2].trim();
-                          const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
-                          return (
-                            <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
-                              {text}
-                            </HeadingTag>
-                          );
+                        // 如果内容包含HTML图片，直接渲染整个内容
+                        if (hasGeneratedImage) {
+                          return <div dangerouslySetInnerHTML={{ __html: content }} />;
                         }
 
-                        // 处理Markdown图片
-                        const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
-                        if (imageMatch) {
-                          const altText = imageMatch[1] || '生成的图片';
-                          return (
-                            <div key={index} className="my-6">
-                              <img
-                                src={imageMatch[2]}
-                                alt={altText}
-                                className="w-full rounded-lg shadow-sm"
-                              />
-                              <p className="text-sm text-gray-500 mt-2 text-center">{altText}</p>
-                            </div>
-                          );
-                        }
+                        // 否则使用原来的分割逻辑处理Markdown
+                        const parts = content.split(/(\n+#{1,6}\s+.*\n*|\n+)/);
 
-                        // 处理普通段落
-                        const trimmedPart = part.trim();
-                        if (trimmedPart) {
-                          return (
-                            <p key={index} className="text-gray-700 mb-4 leading-relaxed">
-                              {trimmedPart}
-                            </p>
-                          );
-                        }
+                        return parts.map((part, index) => {
+                          if (!part || part.match(/^\n+$/)) return null;
 
-                        return null;
-                      });
-                    })()}
+                          // 处理标题
+                          const titleMatch = part.match(/^(#{1,6})\s+(.+)$/m);
+                          if (titleMatch) {
+                            const level = titleMatch[1].length;
+                            const text = titleMatch[2].trim();
+                            const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
+                            return (
+                              <HeadingTag key={index} className="text-gray-900 mt-6 mb-3 font-semibold">
+                                {text}
+                              </HeadingTag>
+                            );
+                          }
+
+                          // 处理Markdown图片
+                          const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
+                          if (imageMatch) {
+                            const altText = imageMatch[1] || '生成的图片';
+                            return (
+                              <div key={index} className="my-6">
+                                <img
+                                  src={imageMatch[2]}
+                                  alt={altText}
+                                  className="w-full rounded-lg shadow-sm"
+                                />
+                                <p className="text-sm text-gray-500 mt-2 text-center">{altText}</p>
+                              </div>
+                            );
+                          }
+
+                          // 处理普通段落
+                          const trimmedPart = part.trim();
+                          if (trimmedPart) {
+                            return (
+                              <p key={index} className="text-gray-700 mb-4 leading-relaxed">
+                                {trimmedPart}
+                              </p>
+                            );
+                          }
+
+                          return null;
+                        });
+                      })()
+                    )}
+                  </div>
+
+                  {/* 保存状态消息 */}
+                  {saveMessage && (
+                    <div className={`mb-4 p-4 rounded-lg border ${
+                      saveMessageType === 'success'
+                        ? 'bg-green-50 border-green-200 text-green-800'
+                        : 'bg-red-50 border-red-200 text-red-800'
+                    }`}>
+                      <div className="flex items-center space-x-2">
+                        {saveMessageType === 'success' ? (
+                          <CheckIcon className="w-5 h-5" />
+                        ) : (
+                          <XIcon className="w-5 h-5" />
+                        )}
+                        <span className="font-medium">{saveMessage}</span>
+                      </div>
+                      {saveMessageType === 'success' && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <a
+                            href="/publish"
+                            className="text-green-700 underline text-sm hover:text-green-800"
+                          >
+                            前往发布管理页面查看
+                          </a>
+                          <button
+                            onClick={() => setSaveMessage('')}
+                            className="text-green-600 hover:text-green-800 text-sm"
+                          >
+                            关闭
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* 操作按钮 - 只在非编辑模式下显示 */}
                   {!isEditing && (
-                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
                     <div className="flex space-x-2">
                       <button
                         onClick={handleStartEdit}
@@ -1087,13 +1229,23 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                       </button>
                       <button
                         onClick={handleSaveToPublish}
-                        className="btn btn-primary flex items-center space-x-2"
+                        disabled={isSaving}
+                        className="btn btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <EyeIcon className="w-4 h-4" />
-                        <span>保存到发布管理</span>
+                        {isSaving ? (
+                          <>
+                            <RefreshCwIcon className="w-4 h-4 animate-spin" />
+                            <span>保存中...</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeIcon className="w-4 h-4" />
+                            <span>保存到发布管理</span>
+                          </>
+                        )}
                       </button>
                     </div>
-                  </div>
+                    </div>
                   )}
                 </div>
               </div>
