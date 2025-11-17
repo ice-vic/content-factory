@@ -96,21 +96,25 @@ export default function ArticleEditor({
   // 处理现有的生成图片
   const processExistingImages = () => {
     const quill = quillRef.current?.getEditor()
-    if (quill && value) {
-      // 检查是否有生成图片
-      if (value.includes('class="generated-image"')) {
-        // 处理生成图片，确保它们在编辑器中正常显示
-        const processedContent = value.replace(
-          /<div class="generated-image[^>]*>(.*?)<\/div>/g,
-          (match, content) => {
-            // 保持原有的图片结构，但确保可编辑
-            return `<div class="generated-image" contenteditable="false">${content}</div>`
-          }
-        )
+    if (quill && quill.root && value) {
+      try {
+        // 检查是否有生成图片
+        if (value.includes('class="generated-image"')) {
+          // 处理生成图片，确保它们在编辑器中正常显示
+          const processedContent = value.replace(
+            /<div class="generated-image[^>]*>(.*?)<\/div>/g,
+            (match, content) => {
+              // 保持原有的图片结构，但确保可编辑
+              return `<div class="generated-image" contenteditable="false">${content}</div>`
+            }
+          )
 
-        if (processedContent !== value) {
-          quill.root.innerHTML = processedContent
+          if (processedContent !== value) {
+            quill.root.innerHTML = processedContent
+          }
         }
+      } catch (error) {
+        console.warn('处理现有图片时出错:', error)
       }
     }
   }
@@ -145,8 +149,16 @@ export default function ArticleEditor({
     // 延迟调用防止滚动，延长延迟时间
     setTimeout(preventScroll, 50)
 
-    // 获取HTML内容并传递给父组件
-    const htmlContent = editor ? editor.root.innerHTML : content
+    // 安全地获取HTML内容并传递给父组件
+    let htmlContent = content
+    try {
+      if (editor && editor.root && typeof editor.root.innerHTML === 'string') {
+        htmlContent = editor.root.innerHTML
+      }
+    } catch (error) {
+      console.warn('获取HTML内容失败，使用纯文本内容:', error)
+    }
+
     onChange(content, htmlContent)
   }, [onChange])
 
@@ -154,16 +166,20 @@ export default function ArticleEditor({
   useEffect(() => {
     if (value) {
       const quill = quillRef.current?.getEditor()
-      if (quill) {
-        // 检查内容是否需要更新
-        const currentContent = quill.root.innerHTML
-        if (currentContent !== value) {
-          // 不要直接设置innerHTML，而是通过Quill的API设置内容
-          if (quill.getText() === '' || !currentContent.includes(value)) {
-            // 如果编辑器为空或者内容不匹配，设置新内容
-            quill.clipboard.dangerouslyPasteHTML(value)
+      if (quill && quill.root) {
+        try {
+          // 检查内容是否需要更新
+          const currentContent = quill.root.innerHTML
+          if (currentContent !== value) {
+            // 不要直接设置innerHTML，而是通过Quill的API设置内容
+            if (quill.getText() === '' || !currentContent.includes(value)) {
+              // 如果编辑器为空或者内容不匹配，设置新内容
+              quill.clipboard.dangerouslyPasteHTML(value)
+            }
+            processExistingImages()
           }
-          processExistingImages()
+        } catch (error) {
+          console.warn('同步编辑器内容时出错:', error)
         }
       }
     }
