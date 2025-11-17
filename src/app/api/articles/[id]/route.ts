@@ -1,23 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient()
+// 全局Prisma实例，避免重复创建
+let prisma: PrismaClient
+
+function getPrismaClient() {
+  if (!prisma) {
+    prisma = new PrismaClient({
+      log: ['query', 'info', 'warn', 'error'],
+    })
+  }
+  return prisma
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🔍 开始获取文章详情，ID:', params.id)
+
     const articleId = parseInt(params.id)
+    console.log('🔢 解析后的文章ID:', articleId)
 
     if (isNaN(articleId)) {
+      console.log('❌ 无效的文章ID:', params.id)
       return NextResponse.json({
         success: false,
         error: '无效的文章ID'
       }, { status: 400 })
     }
 
-    const article = await prisma.article.findUnique({
+    const prismaClient = getPrismaClient()
+    console.log('📊 开始查询数据库...')
+
+    const article = await prismaClient.article.findUnique({
       where: { id: articleId },
       include: {
         publishRecords: {
@@ -26,13 +43,17 @@ export async function GET(
       }
     })
 
+    console.log('📝 查询结果:', article ? '找到文章' : '未找到文章')
+
     if (!article) {
+      console.log('❌ 文章不存在，ID:', articleId)
       return NextResponse.json({
         success: false,
         error: '文章不存在'
       }, { status: 404 })
     }
 
+    console.log('✅ 文章查询成功，开始格式化数据...')
     // 格式化数据
     const formattedArticle = {
       id: article.id.toString(),
@@ -68,21 +89,29 @@ export async function GET(
       }))
     }
 
+    console.log('🎯 文章格式化完成，准备返回响应')
+
     return NextResponse.json({
       success: true,
       article: formattedArticle
     })
 
   } catch (error) {
-    console.error('💥 获取文章详情失败:', error)
+    console.error('💥 获取文章详情失败:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      articleId: params.id
+    })
 
     return NextResponse.json({
       success: false,
-      error: '获取文章详情失败'
+      error: error instanceof Error ? error.message : '获取文章详情失败',
+      details: process.env.NODE_ENV === 'development' ? {
+        stack: error instanceof Error ? error.stack : undefined
+      } : undefined
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
+  // 移除 finally 块中的 prisma.$disconnect()，因为我们使用全局实例
 }
 
 export async function PUT(
@@ -125,7 +154,8 @@ export async function PUT(
     if (status !== undefined) updateData.status = status
     if (customInstructions !== undefined) updateData.customInstructions = customInstructions
 
-    const article = await prisma.article.update({
+    const prismaClient = getPrismaClient()
+    const article = await prismaClient.article.update({
       where: { id: articleId },
       data: updateData
     })
@@ -150,14 +180,17 @@ export async function PUT(
     })
 
   } catch (error) {
-    console.error('💥 更新文章失败:', error)
+    console.error('💥 更新文章失败:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      articleId: params.id,
+      updateData
+    })
 
     return NextResponse.json({
       success: false,
-      error: '更新文章失败'
+      error: error instanceof Error ? error.message : '更新文章失败'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -176,7 +209,8 @@ export async function DELETE(
     }
 
     // 检查文章是否存在
-    const article = await prisma.article.findUnique({
+    const prismaClient = getPrismaClient()
+    const article = await prismaClient.article.findUnique({
       where: { id: articleId }
     })
 
@@ -188,7 +222,7 @@ export async function DELETE(
     }
 
     // 删除文章（级联删除发布记录）
-    await prisma.article.delete({
+    await prismaClient.article.delete({
       where: { id: articleId }
     })
 
@@ -203,13 +237,15 @@ export async function DELETE(
     })
 
   } catch (error) {
-    console.error('💥 删除文章失败:', error)
+    console.error('💥 删除文章失败:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      articleId: params.id
+    })
 
     return NextResponse.json({
       success: false,
-      error: '删除文章失败'
+      error: error instanceof Error ? error.message : '删除文章失败'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
