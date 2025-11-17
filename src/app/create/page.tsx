@@ -410,49 +410,22 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                 setGeneratedArticle(prev => {
                   if (!prev) return prev;
 
-                  console.log('🔧 开始更新文章内容:', {
-                    contentLength: prev.content.length,
-                    imageId,
-                    newImageUrl: newImageUrl.substring(0, 50) + '...'
-                  });
+                  // 在文章内容中查找并替换对应的图片
+                  const updatedContent = prev.content.replace(
+                    new RegExp(`<div class="generated-image[^>]*data-image-id="${imageId}"[^>]*>[\\s\\S]*?<img[^>]*src="[^"]*"[^>]*>`, 'g'),
+                    (match) => {
+                      // 保留原有的div结构和属性，只更新img的src
+                      const divMatch = match.match(/^(<div[^>]*data-image-id="${imageId}"[^>]*>)/);
+                      const imgMatch = match.match(/(<img[^>]*src=")[^"]*("[^>]*>)/);
 
-                  // 先查找目标图片在内容中的具体位置和结构
-                  const imageSectionRegex = new RegExp(`<div[^>]*data-image-id="${imageId}"[^>]*>[\\s\\S]*?</div>`, 'g');
-                  const imageSectionMatch = prev.content.match(imageSectionRegex);
-
-                  console.log('🔍 找到的图片段落:', {
-                    hasMatch: !!imageSectionMatch,
-                    matchLength: imageSectionMatch?.length || 0,
-                    matchPreview: imageSectionMatch?.[0]?.substring(0, 200) + '...' || 'No match'
-                  });
-
-                  let updatedContent = prev.content;
-
-                  if (imageSectionMatch) {
-                    // 直接在匹配的段落中替换图片URL
-                    const oldSection = imageSectionMatch[0];
-                    const newSection = oldSection.replace(
-                      /(<img[^>]*src=")[^"]*("[^>]*>)/,
-                      `$1${newImageUrl}$2`
-                    );
-
-                    console.log('🔄 段落替换结果:', {
-                      oldSectionLength: oldSection.length,
-                      newSectionLength: newSection.length,
-                      hasChanged: oldSection !== newSection,
-                      oldContainsUrl: oldSection.includes('src='),
-                      newContainsNewUrl: newSection.includes(newImageUrl)
-                    });
-
-                    updatedContent = prev.content.replace(oldSection, newSection);
-                  }
-
-                  console.log('🔍 内容更新结果:', {
-                    originalLength: prev.content.length,
-                    updatedLength: updatedContent.length,
-                    hasChanged: updatedContent !== prev.content,
-                    containsNewUrl: updatedContent.includes(newImageUrl)
-                  });
+                      if (divMatch && imgMatch) {
+                        const imgRest = match.match(/src="[^"]*"([^>]*)>$/);
+                        const newImgTag = `<img${imgRest ? imgRest[1] : ''}src="${newImageUrl}"${imgMatch[2]}`;
+                        return divMatch[1] + newImgTag;
+                      }
+                      return match;
+                    }
+                  );
 
                   return {
                     ...prev,
@@ -462,30 +435,16 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
 
                 console.log('✅ 文章内容中的图片URL已更新');
 
-                // 强制重新渲染页面上的图片并破坏缓存
+                // 强制重新渲染页面上的图片
                 setTimeout(() => {
                   const imgElements = document.querySelectorAll(`[data-image-id="${imageId}"] img`);
-                  console.log('🔄 查找到的图片元素数量:', imgElements.length);
-
-                  imgElements.forEach((img: any, index) => {
-                    console.log(`🖼️ 更新图片元素 ${index}:`, {
-                      originalSrc: img.src?.substring(0, 50) + '...',
-                      dataImageId: img.parentElement?.getAttribute('data-image-id')
-                    });
-
+                  imgElements.forEach((img: any) => {
                     // 强制刷新图片以绕过缓存
-                    const timestamp = Date.now();
-                    const separator = img.src.includes('?') ? '&' : '?';
-                    img.src = img.src + separator + '_force=' + timestamp;
-
-                    // 强制重新加载图片
-                    img.crossOrigin = 'anonymous';
-                    img.style.opacity = '0.5';
-                    setTimeout(() => {
-                      img.style.opacity = '1';
-                    }, 300);
+                    const originalSrc = img.src;
+                    img.src = '';
+                    img.src = originalSrc + '?_force=' + Date.now();
                   });
-                }, 200);
+                }, 100);
 
               } else {
                 console.error('❌ 新HTML中未找到图片元素');
