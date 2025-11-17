@@ -1223,6 +1223,99 @@ Notion AI将AI能力集成到了文档管理中，帮助团队更好地组织和
                       margin-bottom: 1rem;
                       color: #374151;
                     }
+
+                    /* 修复字号大小显示问题 - Quill字号类支持 */
+                    .article-content .ql-size-small {
+                      font-size: 0.75em;    /* 小号字体 */
+                    }
+
+                    .article-content .ql-size-large {
+                      font-size: 1.5em;     /* 大号字体 */
+                    }
+
+                    .article-content .ql-size-huge {
+                      font-size: 2.5em;     /* 超大号字体 */
+                    }
+
+                    /* 修复字体类型显示问题 - Quill字体类支持 */
+                    .article-content .ql-font-serif {
+                      font-family: Georgia, 'Times New Roman', serif;
+                    }
+
+                    .article-content .ql-font-monospace {
+                      font-family: 'Courier New', Courier, monospace;
+                    }
+
+                    .article-content .ql-font-sans-serif {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    }
+
+                    /* 修复列表样式显示问题 */
+                    .article-content ul {
+                      list-style-type: disc;
+                      margin-left: 1.5rem;
+                      margin-bottom: 1rem;
+                      color: #374151;
+                    }
+
+                    .article-content ol {
+                      list-style-type: decimal;
+                      margin-left: 1.5rem;
+                      margin-bottom: 1rem;
+                      color: #374151;
+                    }
+
+                    .article-content li {
+                      margin-bottom: 0.5rem;
+                      line-height: 1.6;
+                    }
+
+                    /* 修复文本缩进显示问题 - Quill缩进类支持 */
+                    .article-content .ql-indent-1 {
+                      margin-left: 3em;
+                    }
+
+                    .article-content .ql-indent-2 {
+                      margin-left: 6em;
+                    }
+
+                    .article-content .ql-indent-3 {
+                      margin-left: 9em;
+                    }
+
+                    /* 修复链接样式显示问题 */
+                    .article-content a {
+                      color: #3b82f6;
+                      text-decoration: underline;
+                      transition: color 0.2s ease;
+                    }
+
+                    .article-content a:hover {
+                      color: #2563eb;
+                      text-decoration: none;
+                    }
+
+                    /* 优化文本装饰样式 */
+                    .article-content strong {
+                      font-weight: 700;
+                      color: #1f2937;
+                    }
+
+                    .article-content em {
+                      font-style: italic;
+                      color: #374151;
+                    }
+
+                    .article-content u {
+                      text-decoration: underline;
+                      text-decoration-color: #6b7280;
+                      text-underline-offset: 2px;
+                    }
+
+                    .article-content s {
+                      text-decoration: line-through;
+                      color: #6b7280;
+                    }
                   `}</style>
 
                   {/* 保存状态消息 */}
