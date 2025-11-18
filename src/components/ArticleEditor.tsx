@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import 'react-quill/dist/quill.snow.css'
 
-// 动态导入ReactQuill，禁用SSR
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
+// 动态导入ReactQuill和其CSS，禁用SSR
+const ReactQuill = dynamic(() => {
+  return import('react-quill').then((mod) => {
+    // 动态导入CSS
+    if (typeof window !== 'undefined') {
+      import('react-quill/dist/quill.snow.css')
+    }
+    return mod
+  })
+}, { ssr: false })
 
 interface ArticleEditorProps {
   value: string
