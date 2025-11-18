@@ -79,4 +79,200 @@
     outline: 2px solid #3B82F6;
     outline-offset: 2px;
   }
+
+  /* Article Content Styles for Quill Editor Display */
+  .article-content .ql-align-center {
+    text-align: center;
+  }
+
+  .article-content .ql-align-right {
+    text-align: right;
+  }
+
+  .article-content .ql-align-left {
+    text-align: left;
+  }
+
+  .article-content .ql-align-justify {
+    text-align: justify;
+  }
+
+  /* Font Sizes */
+  .article-content .ql-size-small {
+    font-size: 0.75em;
+  }
+
+  .article-content .ql-size-large {
+    font-size: 1.5em;
+  }
+
+  .article-content .ql-size-huge {
+    font-size: 2.5em;
+  }
+
+  /* Font Styles */
+  .article-content .ql-font-serif {
+    font-family: Georgia, Times New Roman, serif;
+  }
+
+  .article-content .ql-font-monospace {
+    font-family: Monaco, Courier New, monospace;
+  }
+
+  /* Text Colors */
+  .article-content .ql-color-red { color: #e60000; }
+  .article-content .ql-color-orange { color: #f90; }
+  .article-content .ql-color-yellow { color: #ff0; }
+  .article-content .ql-color-green { color: #008a00; }
+  .article-content .ql-color-blue { color: #06c; }
+  .article-content .ql-color-purple { color: #93f; }
+  .article-content .ql-color-white { color: #fff; }
+  .article-content .ql-color-gray { color: #808080; }
+  .article-content .ql-color-black { color: #000; }
+
+  /* Background Colors */
+  .article-content .ql-background-red { background-color: #e60000; }
+  .article-content .ql-background-orange { background-color: #f90; }
+  .article-content .ql-background-yellow { background-color: #ff0; }
+  .article-content .ql-background-green { background-color: #008a00; }
+  .article-content .ql-background-blue { background-color: #06c; }
+  .article-content .ql-background-purple { background-color: #93f; }
+  .article-content .ql-background-white { background-color: #fff; }
+  .article-content .ql-background-gray { background-color: #808080; }
+  .article-content .ql-background-black { background-color: #000; }
+
+  /* Text Colors with proper contrast for light backgrounds */
+  .article-content .ql-background-pink {
+    background-color: #f48fb1;
+    color: #333;
+  }
+  .article-content .ql-background-indigo {
+    background-color: #9fa8da;
+    color: #333;
+  }
+  .article-content .ql-background-teal {
+    background-color: #80cbc4;
+    color: #333;
+  }
+  .article-content .ql-background-cyan {
+    background-color: #b2ebf2;
+    color: #333;
+  }
+  .article-content .ql-background-lime {
+    background-color: #dcedc8;
+    color: #333;
+  }
+  .article-content .ql-background-amber {
+    background-color: #ffe082;
+    color: #333;
+  }
+  .article-content .ql-background-grey {
+    background-color: #e0e0e0;
+    color: #333;
+  }
+  .article-content .ql-background-blue-grey {
+    background-color: #cfd8dc;
+    color: #333;
+  }
+
+  /* Ensure proper text contrast for dark backgrounds */
+  .article-content .ql-background-black,
+  .article-content .ql-background-blue,
+  .article-content .ql-background-indigo,
+  .article-content .ql-background-purple {
+    color: #fff;
+  }
+
+  /* Ensure proper text contrast for light backgrounds */
+  .article-content .ql-background-white,
+  .article-content .ql-background-yellow,
+  .article-content .ql-background-lime,
+  .article-content .ql-background-amber,
+  .article-content .ql-background-grey {
+    color: #333;
+  }
+
+  /* List Indentation */
+  .article-content .ql-indent-1 {
+    padding-left: 3em;
+  }
+
+  .article-content .ql-indent-2 {
+    padding-left: 6em;
+  }
+
+  .article-content .ql-indent-3 {
+    padding-left: 9em;
+  }
+
+  /* Code Blocks and Inline Code */
+  .article-content pre {
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 1em;
+    font-family: Monaco, Consolas, 'Courier New', monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 1em 0;
+    overflow-x: auto;
+  }
+
+  .article-content code {
+    background-color: #f5f5f5;
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-family: Monaco, Consolas, 'Courier New', monospace;
+    font-size: 0.9em;
+  }
+
+  /* Blockquotes */
+  .article-content blockquote {
+    border-left: 4px solid #ddd;
+    margin: 1em 0;
+    padding-left: 1em;
+    color: #666;
+    font-style: italic;
+  }
+
+  /* Generated Images */
+  .article-content .generated-image {
+    text-align: center;
+    margin: 1em 0;
+  }
+
+  .article-content .generated-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Basic text formatting */
+  .article-content strong {
+    font-weight: bold;
+  }
+
+  .article-content em {
+    font-style: italic;
+  }
+
+  .article-content u {
+    text-decoration: underline;
+  }
+
+  .article-content s {
+    text-decoration: line-through;
+  }
+
+  /* Links */
+  .article-content a {
+    color: #3b82f6;
+    text-decoration: none;
+  }
+
+  .article-content a:hover {
+    text-decoration: underline;
+  }
 }
