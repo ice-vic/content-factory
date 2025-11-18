@@ -24,7 +24,9 @@
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(npm run)"
+      "Bash(npm run)",
+      "Bash(nul:*)",
+      "Bash(cmd:*)"
     ],
     "deny": [],
     "ask": []

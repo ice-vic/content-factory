@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Navigation from '@/components/Navigation'
 import ArticleDetailModal from '@/components/publish/ArticleDetailModal'
 import ArticleEditModal from '@/components/publish/ArticleEditModal'
+import WeChatPublishModal from '@/components/publish/WeChatPublishModal'
 import {
   ClipboardListIcon,
   SearchIcon,
@@ -34,7 +35,9 @@ export default function PublishPage() {
   // 弹窗状态管理
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showPublishModal, setShowPublishModal] = useState(false)
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null)
+  const [selectedArticleForPublish, setSelectedArticleForPublish] = useState<any>(null)
 
   // 数据加载状态
   const [articles, setArticles] = useState<any[]>([])
@@ -187,8 +190,28 @@ export default function PublishPage() {
     }
   }
 
-  const handlePublish = (articleId: string, platform: string) => {
-    alert(`准备发布文章 ${articleId} 到 ${platform}`)
+  const handlePublish = async (articleId: string, platform: string) => {
+    if (platform === 'wechat') {
+      try {
+        // 获取文章详情
+        console.log('📄 获取文章详情:', articleId)
+        const response = await fetch(`/api/articles/${articleId}`)
+        const result = await response.json()
+
+        if (response.ok && result.success) {
+          console.log('✅ 文章详情获取成功:', result.article)
+          setSelectedArticleForPublish(result.article)
+          setShowPublishModal(true)
+        } else {
+          throw new Error(result.error || '获取文章详情失败')
+        }
+      } catch (error) {
+        console.error('💥 获取文章详情失败:', error)
+        alert(error instanceof Error ? error.message : '获取文章详情失败')
+      }
+    } else {
+      alert(`暂不支持发布到 ${platform}`)
+    }
   }
 
   const handleBatchPublish = () => {
@@ -275,6 +298,16 @@ export default function PublishPage() {
   const handleCloseEditModal = () => {
     setShowEditModal(false)
     setSelectedArticleId(null)
+  }
+
+  const handleClosePublishModal = () => {
+    setShowPublishModal(false)
+    setSelectedArticleForPublish(null)
+  }
+
+  const handlePublishSuccess = () => {
+    console.log('✅ 文章发布成功，刷新列表')
+    loadArticles(currentPage)
   }
 
   const handleArticleSaved = (updatedArticle: any) => {
@@ -797,6 +830,19 @@ export default function PublishPage() {
           articleId={selectedArticleId}
           onSave={handleArticleSaved}
         />
+
+        {/* 微信发布弹窗 */}
+        {selectedArticleForPublish && (
+          <WeChatPublishModal
+            isOpen={showPublishModal}
+            onClose={handleClosePublishModal}
+            articleId={selectedArticleForPublish.id}
+            articleTitle={selectedArticleForPublish.title}
+            articleContent={selectedArticleForPublish.content}
+            articleHtmlContent={selectedArticleForPublish.htmlContent}
+            onSuccess={handlePublishSuccess}
+          />
+        )}
 
         {/* 快速操作浮动按钮 */}
         <div className="fixed bottom-8 right-8">
